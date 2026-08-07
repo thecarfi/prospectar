@@ -1,0 +1,13 @@
+{
+  "name": "gestao-clientes-sistema",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema web de gestão de clientes com controle de permissões",
+  "scripts": {
+    "install:all": "npm.cmd --prefix backend install && npm.cmd --prefix frontend install",
+    "dev:backend": "npm.cmd --prefix backend run dev",
+    "dev:frontend": "npm.cmd --prefix frontend start",
+    "migrate": "npm.cmd --prefix backend run migrate",
+    "seed": "npm.cmd --prefix backend run seed"
+  }
+}
