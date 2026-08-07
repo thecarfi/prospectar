@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: prospectar
+    runtime: node
+    branch: main
+    buildCommand: npm --prefix frontend ci && npm --prefix backend ci && npm --prefix frontend run build
+    startCommand: node backend/src/server.js
+    healthCheckPath: /api/clientes/estatisticas
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DB_SSL
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
