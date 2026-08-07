@@ -5,11 +5,13 @@ services:
     branch: main
     buildCommand: npm --prefix frontend ci && npm --prefix backend ci && npm --prefix frontend run build
     startCommand: node backend/src/server.js
-    healthCheckPath: /api/clientes/estatisticas
+    healthCheckPath: /
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: DB_SSL
+        value: "true"
+      - key: SERVE_SPA
         value: "true"
       - key: DATABASE_URL
         sync: false
