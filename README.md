@@ -130,3 +130,5 @@ registrados na tabela `schema_migrations` (execução idempotente).
 - O segredo JWT e as credenciais do banco ficam no `backend/.env` (não versionado).
 - Senhas armazenadas com bcrypt (hash + salt).
 - Altere o usuário e a senha do admin padrão (`backend/.env` → `npm run seed`) em produção.
+# prospectar
+Sistema com objetivo de realizar gestão de prospecção de clientes antigo e novos.
