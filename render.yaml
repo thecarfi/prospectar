@@ -5,6 +5,7 @@ services:
     branch: main
     buildCommand: npm --prefix frontend ci && npm --prefix backend ci && npm --prefix frontend run build
     startCommand: node backend/src/server.js
+    preDeployCommand: npm --prefix backend run migrate && npm --prefix backend run seed
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
