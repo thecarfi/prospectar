@@ -3,7 +3,7 @@ services:
     name: prospectar
     runtime: node
     branch: main
-    buildCommand: npm --prefix frontend ci && npm --prefix backend ci && npm --prefix frontend run build
+    buildCommand: npm --prefix frontend ci && npm --prefix backend ci && npm --prefix frontend run build && npm --prefix backend run migrate && npm --prefix backend run seed
     startCommand: node backend/src/server.js
     preDeployCommand: npm --prefix backend run migrate && npm --prefix backend run seed
     healthCheckPath: /
