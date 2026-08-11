@@ -1,4 +1,14 @@
-import { Component, Input, OnInit, computed, effect, inject } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  Input,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgFor, NgIf } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -64,9 +74,14 @@ export class SeletorMunicipioComponent implements OnInit {
   @Input() permitirVazio = false;
 
   readonly buscaControl = new FormControl('');
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly municipioIdSignal = signal<number | null | undefined>(
+    undefined
+  );
+
   private readonly efeito = effect(() => {
     this.localizacao.municipios();
-    const id = this.municipioControl.value;
+    const id = this.municipioIdSignal();
     const municipio = this.localizacao.obterMunicipio(id);
     if (municipio && this.buscaControl.value !== municipio.nome) {
       this.buscaControl.setValue(municipio.nome);
@@ -94,6 +109,10 @@ export class SeletorMunicipioComponent implements OnInit {
 
   ngOnInit(): void {
     this.localizacao.carregar();
+    this.municipioIdSignal.set(this.municipioControl.value);
+    this.municipioControl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((valor) => this.municipioIdSignal.set(valor));
   }
 
   aoSelecionar(id: number): void {
