@@ -44,7 +44,7 @@ import { Municipio } from '../core/models';
       <mat-icon matPrefix>search</mat-icon>
       <mat-autocomplete #auto="matAutocomplete" (optionSelected)="aoSelecionar($event.option.value)">
         <mat-option *ngIf="permitirVazio" [value]="0">Todos</mat-option>
-        <mat-option *ngFor="let m of municipiosFiltrados()" [value]="m.id">
+        <mat-option *ngFor="let m of municipiosFiltrados" [value]="m.id">
           {{ m.nome }}
         </mat-option>
       </mat-autocomplete>
@@ -75,13 +75,22 @@ export class SeletorMunicipioComponent implements OnInit {
 
   readonly estados = computed(() => this.localizacao.estados());
 
-  readonly municipiosFiltrados = computed(() => {
+  private cacheLista = '';
+  private cacheMunicipios: Municipio[] = [];
+
+  get municipiosFiltrados(): Municipio[] {
     const uf = this.estadoControl.value;
     const termo = (this.buscaControl.value || '').toLowerCase();
-    return this.localizacao
+    const chave = `${uf}|${termo}`;
+    if (chave === this.cacheLista) {
+      return this.cacheMunicipios;
+    }
+    this.cacheLista = chave;
+    this.cacheMunicipios = this.localizacao
       .municipiosPorUf(uf)
       .filter((m) => (termo ? m.nome.toLowerCase().includes(termo) : true));
-  });
+    return this.cacheMunicipios;
+  }
 
   ngOnInit(): void {
     this.localizacao.carregar();
