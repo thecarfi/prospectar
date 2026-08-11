@@ -9,6 +9,7 @@ import { ClienteFormComponent } from './pages/clientes/cliente-form.component';
 import { ClienteDetailComponent } from './pages/clientes/cliente-detail.component';
 import { UsuarioManagementComponent } from './pages/usuarios/usuario-management.component';
 import { AcessoNegadoComponent } from './pages/acesso-negado/acesso-negado.component';
+import { ConfiguracoesComponent } from './pages/configuracoes/configuracoes.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -43,6 +44,11 @@ export const routes: Routes = [
         path: 'usuarios',
         component: UsuarioManagementComponent,
         canActivate: [permissionGuard('usuarios:gerenciar')],
+      },
+      {
+        path: 'configuracoes',
+        component: ConfiguracoesComponent,
+        canActivate: [permissionGuard('segmentos:ver')],
       },
       { path: 'acesso-negado', component: AcessoNegadoComponent },
     ],

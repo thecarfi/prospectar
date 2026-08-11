@@ -17,7 +17,7 @@ async function listar(req, res, next) {
       busca,
       cidade,
       estado,
-      segmento,
+      segmento_id,
       status,
       pagina = 1,
       limite = 10,
@@ -47,9 +47,15 @@ async function listar(req, res, next) {
       params.push(estado);
       condicoes.push(`e.sigla = $${params.length}`);
     }
-    if (segmento) {
-      params.push(segmento);
-      condicoes.push(`c.segmento ILIKE $${params.length}`);
+    if (segmento_id) {
+      const id = parseInt(segmento_id, 10);
+      if (Number.isInteger(id)) {
+        params.push(id);
+        condicoes.push(
+          `EXISTS (SELECT 1 FROM cliente_segmentos cs
+                     WHERE cs.cliente_id = c.id AND cs.segmento_id = $${params.length})`
+        );
+      }
     }
     if (status) {
       params.push(status);
@@ -71,9 +77,13 @@ async function listar(req, res, next) {
     );
 
     const { rows } = await pool.query(
-      `SELECT c.id, c.nome, c.cpf_cnpj, c.segmento, c.status,
+      `SELECT c.id, c.nome, c.cpf_cnpj, c.status,
               c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
-              c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
+              c.observacoes, c.criado_por, c.criado_em, c.atualizado_em,
+              COALESCE((SELECT string_agg(s.nome, ', ' ORDER BY s.nome)
+                          FROM cliente_segmentos cs
+                          JOIN segmentos s ON s.id = cs.segmento_id
+                         WHERE cs.cliente_id = c.id), '') AS segmentos_nomes
          ${fromSql}
          ${whereSql}
         ORDER BY ${ordenarPor} ${direcao}, c.id
@@ -112,7 +122,7 @@ async function detalhar(req, res, next) {
     const { id } = req.params;
 
     const { rows: clientes } = await pool.query(
-      `SELECT c.id, c.nome, c.cpf_cnpj, c.segmento, c.status,
+      `SELECT c.id, c.nome, c.cpf_cnpj, c.status,
               c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
               c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
          FROM clientes c
@@ -147,8 +157,16 @@ async function detalhar(req, res, next) {
          FROM interacoes WHERE cliente_id = $1 ORDER BY ocorreu_em DESC`,
       [id]
     );
+    const { rows: segmentos } = await pool.query(
+      `SELECT s.id, s.nome, s.descricao
+         FROM segmentos s
+         JOIN cliente_segmentos cs ON cs.segmento_id = s.id
+        WHERE cs.cliente_id = $1
+        ORDER BY s.nome`,
+      [id]
+    );
 
-    res.json({ ...cliente, contatos, enderecos, interacoes });
+    res.json({ ...cliente, contatos, enderecos, interacoes, segmentos });
   } catch (err) {
     next(err);
   }
@@ -159,7 +177,7 @@ async function criar(req, res, next) {
     const {
       nome,
       cpf_cnpj,
-      segmento,
+      segmento_ids,
       municipio_id,
       status = 'ativo',
       observacoes,
@@ -170,12 +188,21 @@ async function criar(req, res, next) {
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO clientes (nome, cpf_cnpj, segmento, municipio_id, status, observacoes, criado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, nome, cpf_cnpj, segmento, municipio_id, status,
+      `INSERT INTO clientes (nome, cpf_cnpj, municipio_id, status, observacoes, criado_por)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, nome, cpf_cnpj, municipio_id, status,
                  observacoes, criado_por, criado_em, atualizado_em`,
-      [nome, cpf_cnpj || null, segmento || null, municipio_id ?? null, status, observacoes || null, req.user.id]
+      [nome, cpf_cnpj || null, municipio_id ?? null, status, observacoes || null, req.user.id]
     );
+
+    if (Array.isArray(segmento_ids) && segmento_ids.length > 0) {
+      await pool.query(
+        `INSERT INTO cliente_segmentos (cliente_id, segmento_id)
+         SELECT $1, unnest($2::int[])
+         ON CONFLICT DO NOTHING`,
+        [rows[0].id, segmento_ids]
+      );
+    }
 
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -187,45 +214,71 @@ async function criar(req, res, next) {
 }
 
 async function atualizar(req, res, next) {
+  const { id } = req.params;
+  const {
+    nome,
+    cpf_cnpj,
+    segmento_ids,
+    municipio_id,
+    status,
+    observacoes,
+  } = req.body;
+
   try {
-    const { id } = req.params;
-    const {
-      nome,
-      cpf_cnpj,
-      segmento,
-      municipio_id,
-      status,
-      observacoes,
-    } = req.body;
-
-    const { rows: existente } = await pool.query(
-      'SELECT id FROM clientes WHERE id = $1',
-      [id]
-    );
-    if (!existente[0]) {
-      throw new ApiError(404, 'Cliente não encontrado');
-    }
-
     if (municipio_id != null) {
       await validarMunicipio(municipio_id);
     }
 
-    const { rows } = await pool.query(
-      `UPDATE clientes
-          SET nome = COALESCE($1, nome),
-              cpf_cnpj = COALESCE($2, cpf_cnpj),
-              segmento = COALESCE($3, segmento),
-              municipio_id = COALESCE($4, municipio_id),
-              status = COALESCE($5, status),
-              observacoes = COALESCE($6, observacoes),
-              atualizado_em = NOW()
-        WHERE id = $7
-        RETURNING id, nome, cpf_cnpj, segmento, municipio_id, status,
-                  observacoes, criado_por, criado_em, atualizado_em`,
-      [nome ?? null, cpf_cnpj ?? null, segmento ?? null, municipio_id ?? null, status ?? null, observacoes ?? null, id]
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    res.json(rows[0]);
+      const { rows: existente } = await client.query(
+        'SELECT id FROM clientes WHERE id = $1',
+        [id]
+      );
+      if (!existente[0]) {
+        throw new ApiError(404, 'Cliente não encontrado');
+      }
+
+      const { rows } = await client.query(
+        `UPDATE clientes
+            SET nome = COALESCE($1, nome),
+                cpf_cnpj = COALESCE($2, cpf_cnpj),
+                municipio_id = COALESCE($3, municipio_id),
+                status = COALESCE($4, status),
+                observacoes = COALESCE($5, observacoes),
+                atualizado_em = NOW()
+          WHERE id = $6
+          RETURNING id, nome, cpf_cnpj, municipio_id, status,
+                    observacoes, criado_por, criado_em, atualizado_em`,
+        [nome ?? null, cpf_cnpj ?? null, municipio_id ?? null, status ?? null, observacoes ?? null, id]
+      );
+
+      if ('segmento_ids' in req.body) {
+        const lista = Array.isArray(segmento_ids) ? segmento_ids : [];
+        await client.query(
+          'DELETE FROM cliente_segmentos WHERE cliente_id = $1',
+          [id]
+        );
+        if (lista.length > 0) {
+          await client.query(
+            `INSERT INTO cliente_segmentos (cliente_id, segmento_id)
+             SELECT $1, unnest($2::int[])
+             ON CONFLICT DO NOTHING`,
+            [id, lista]
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+      res.json(rows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     if (err.code === '23505') {
       return next(new ApiError(409, 'CPF/CNPJ já cadastrado'));

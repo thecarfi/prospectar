@@ -73,7 +73,7 @@ import { Cliente } from '../../core/models';
           </ng-container>
           <ng-container matColumnDef="segmento">
             <th mat-header-cell *matHeaderCellDef>Segmento</th>
-            <td mat-cell *matCellDef="let cliente">{{ cliente.segmento || '—' }}</td>
+            <td mat-cell *matCellDef="let cliente">{{ cliente.segmentos_nomes || '—' }}</td>
           </ng-container>
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>

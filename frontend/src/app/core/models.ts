@@ -21,6 +21,12 @@ export interface Paginacao<T> {
   limite: number;
 }
 
+export interface Segmento {
+  id: number;
+  nome: string;
+  descricao?: string;
+}
+
 export interface Estado {
   id: number;
   sigla: string;
@@ -38,7 +44,8 @@ export interface Cliente {
   id: number;
   nome: string;
   cpf_cnpj?: string;
-  segmento?: string;
+  segmentos?: Segmento[];
+  segmentos_nomes?: string;
   municipio_id?: number;
   municipio_nome?: string;
   municipio_uf?: string;
@@ -59,7 +66,7 @@ export interface ClienteFiltros {
   busca?: string;
   cidade?: string;
   estado?: string;
-  segmento?: string;
+  segmento_id?: number;
   status?: string;
   pagina?: number;
   limite?: number;

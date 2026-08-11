@@ -10,8 +10,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClientesService } from '../../core/services/clientes.service';
-import { Cliente } from '../../core/models';
+import { Cliente, Segmento } from '../../core/models';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
+import { SeletorSegmentosComponent } from '../../shared/seletor-segmentos.component';
 
 @Component({
   selector: 'app-cliente-form',
@@ -25,6 +26,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
     MatInputModule,
     MatSelectModule,
     SeletorMunicipioComponent,
+    SeletorSegmentosComponent,
   ],
   template: `
     <div class="header">
@@ -53,10 +55,10 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Segmento</mat-label>
-            <input matInput formControlName="segmento" />
-          </mat-form-field>
+          <app-seletor-segmentos
+            class="full"
+            [control]="formulario.controls.segmentos"
+          ></app-seletor-segmentos>
 
           <app-seletor-municipio
             [estadoControl]="formulario.controls.estado"
@@ -116,7 +118,7 @@ export class ClienteFormComponent implements OnInit {
     nome: ['', Validators.required],
     cpf_cnpj: [''],
     status: ['ativo' as string],
-    segmento: [''],
+    segmentos: this.fb.control<Segmento[]>([]),
     estado: [''],
     municipio_id: [null as number | null],
     observacoes: [''],
@@ -136,7 +138,7 @@ export class ClienteFormComponent implements OnInit {
           nome: cliente.nome,
           cpf_cnpj: cliente.cpf_cnpj || '',
           status: cliente.status,
-          segmento: cliente.segmento || '',
+          segmentos: cliente.segmentos || [],
           estado: cliente.municipio_uf || '',
           municipio_id: cliente.municipio_id || null,
           observacoes: cliente.observacoes || '',
@@ -155,7 +157,7 @@ export class ClienteFormComponent implements OnInit {
     const payload = {
       ...valor,
       cpf_cnpj: valor.cpf_cnpj || null,
-      segmento: valor.segmento || null,
+      segmento_ids: (valor.segmentos ?? []).map((s) => s.id),
       municipio_id: valor.municipio_id,
       observacoes: valor.observacoes || null,
     };

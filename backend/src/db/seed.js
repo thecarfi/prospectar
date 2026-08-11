@@ -12,7 +12,19 @@ const PERMISSOES = {
   interacoes: ['ver', 'criar', 'editar', 'excluir'],
   usuarios: ['ver', 'gerenciar'],
   localizacao: ['ver'],
+  segmentos: ['ver', 'criar', 'editar', 'excluir'],
 };
+
+const SEGMENTOS_PADRAO = [
+  { nome: 'Comércio', descricao: 'Atividades de compra e venda de mercadorias' },
+  { nome: 'Indústria', descricao: 'Transformação de matéria-prima em produtos' },
+  { nome: 'Serviços', descricao: 'Prestação de serviços em geral' },
+  { nome: 'Agropecuária', descricao: 'Agricultura, pecuária e atividades rurais' },
+  { nome: 'Tecnologia', descricao: 'Software, hardware e serviços de TI' },
+  { nome: 'Educação', descricao: 'Instituições de ensino e capacitação' },
+  { nome: 'Saúde', descricao: 'Serviços de saúde e bem-estar' },
+  { nome: 'Construção Civil', descricao: 'Obras, engenharia e construção' },
+];
 
 const NOMES_ESTADOS = {
   AC: 'Acre',
@@ -57,6 +69,7 @@ const PAPEIS = {
     'interacoes:ver', 'interacoes:criar', 'interacoes:editar',
     'usuarios:ver',
     'localizacao:ver',
+    'segmentos:ver',
   ],
   visualizador: [
     'clientes:ver',
@@ -64,6 +77,7 @@ const PAPEIS = {
     'enderecos:ver',
     'interacoes:ver',
     'localizacao:ver',
+    'segmentos:ver',
   ],
 };
 
@@ -113,6 +127,7 @@ async function seed() {
     );
 
     await seedLocalizacao(client);
+    await seedSegmentos(client);
 
     await client.query('COMMIT');
 
@@ -215,6 +230,16 @@ async function seedLocalizacao(client) {
         }
       }
     }
+  }
+}
+
+async function seedSegmentos(client) {
+  for (const segmento of SEGMENTOS_PADRAO) {
+    await client.query(
+      `INSERT INTO segmentos (nome, descricao) VALUES ($1, $2)
+       ON CONFLICT (nome) DO UPDATE SET descricao = EXCLUDED.descricao`,
+      [segmento.nome, segmento.descricao]
+    );
   }
 }
 

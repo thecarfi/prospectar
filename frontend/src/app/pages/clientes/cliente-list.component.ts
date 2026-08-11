@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
-import { NgIf } from '@angular/common';
+import { NgIf, NgFor } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -16,8 +16,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClientesService } from '../../core/services/clientes.service';
+import { SegmentosService } from '../../core/services/segmentos.service';
 import { LocalizacaoService } from '../../core/services/localizacao.service';
-import { Cliente } from '../../core/models';
+import { Cliente, Segmento } from '../../core/models';
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
@@ -26,6 +27,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
   selector: 'app-cliente-list',
   imports: [
     NgIf,
+    NgFor,
     ReactiveFormsModule,
     RouterLink,
     MatCardModule,
@@ -74,7 +76,12 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
           ></app-seletor-municipio>
           <mat-form-field appearance="outline">
             <mat-label>Segmento</mat-label>
-            <input matInput formControlName="segmento" />
+            <mat-select formControlName="segmento_id">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option *ngFor="let segmento of segmentos" [value]="segmento.id">
+                {{ segmento.nome }}
+              </mat-option>
+            </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Status</mat-label>
@@ -117,7 +124,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
           </ng-container>
           <ng-container matColumnDef="segmento">
             <th mat-header-cell *matHeaderCellDef>Segmento</th>
-            <td mat-cell *matCellDef="let cliente">{{ cliente.segmento || '—' }}</td>
+            <td mat-cell *matCellDef="let cliente">{{ cliente.segmentos_nomes || '—' }}</td>
           </ng-container>
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
@@ -220,6 +227,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
 })
 export class ClienteListComponent implements OnInit {
   private readonly clientesService = inject(ClientesService);
+  private readonly segmentosService = inject(SegmentosService);
   private readonly localizacao = inject(LocalizacaoService);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
@@ -230,11 +238,12 @@ export class ClienteListComponent implements OnInit {
     busca: [''],
     estado: [''],
     municipio_id: [null as number | null],
-    segmento: [''],
+    segmento_id: [null as number | null],
     status: [''],
   });
 
   clientes: Cliente[] = [];
+  segmentos: Segmento[] = [];
   total = 0;
   pagina = 1;
   limite = 10;
@@ -243,6 +252,12 @@ export class ClienteListComponent implements OnInit {
 
   ngOnInit(): void {
     this.carregar();
+    this.segmentosService.listar().subscribe({
+      next: (lista) => {
+        this.segmentos = lista;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   buscar(): void {
@@ -263,7 +278,7 @@ export class ClienteListComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
-    const { busca, estado, municipio_id, segmento, status } =
+    const { busca, estado, municipio_id, segmento_id, status } =
       this.filtros.getRawValue();
     const municipio = this.localizacao.obterMunicipio(municipio_id);
     this.clientesService
@@ -271,7 +286,7 @@ export class ClienteListComponent implements OnInit {
         busca: busca || undefined,
         cidade: municipio?.nome,
         estado: estado || undefined,
-        segmento: segmento || undefined,
+        segmento_id: segmento_id ?? undefined,
         status: status || undefined,
         pagina: this.pagina,
         limite: this.limite,

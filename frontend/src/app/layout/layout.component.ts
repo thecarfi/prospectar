@@ -138,6 +138,7 @@ export class LayoutComponent {
     { rotulo: 'Dashboard', rota: '/dashboard', icone: 'dashboard', permissao: 'clientes:ver' },
     { rotulo: 'Clientes', rota: '/clientes', icone: 'groups', permissao: 'clientes:ver' },
     { rotulo: 'Usuários', rota: '/usuarios', icone: 'manage_accounts', permissao: 'usuarios:gerenciar', somenteAdmin: true },
+    { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissao: 'segmentos:ver' },
   ];
 
   sair(): void {

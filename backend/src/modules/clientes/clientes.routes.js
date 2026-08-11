@@ -38,6 +38,8 @@ router.post(
   body('nome').trim().notEmpty().withMessage('Nome obrigatório'),
   body('cpf_cnpj').optional({ nullable: true }).trim(),
   body('municipio_id').optional().isInt().withMessage('Município inválido'),
+  body('segmento_ids').optional().isArray().withMessage('Segmentos inválidos'),
+  body('segmento_ids.*').optional().isInt().withMessage('Segmento inválido'),
   body('status').optional().isIn(['ativo', 'inativo', 'prospect']).withMessage('Status inválido'),
   validate,
   clientesController.criar
@@ -48,6 +50,8 @@ router.put(
   requirePermission('clientes:editar'),
   param('id').isInt().withMessage('ID inválido'),
   body('municipio_id').optional().isInt().withMessage('Município inválido'),
+  body('segmento_ids').optional().isArray().withMessage('Segmentos inválidos'),
+  body('segmento_ids.*').optional().isInt().withMessage('Segmento inválido'),
   body('status').optional().isIn(['ativo', 'inativo', 'prospect']).withMessage('Status inválido'),
   validate,
   clientesController.atualizar

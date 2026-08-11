@@ -12,7 +12,7 @@ export class ClientesService {
     if (filtros.busca) params = params.set('busca', filtros.busca);
     if (filtros.cidade) params = params.set('cidade', filtros.cidade);
     if (filtros.estado) params = params.set('estado', filtros.estado);
-    if (filtros.segmento) params = params.set('segmento', filtros.segmento);
+    if (filtros.segmento_id) params = params.set('segmento_id', filtros.segmento_id);
     if (filtros.status) params = params.set('status', filtros.status);
     if (filtros.ordenar_por) params = params.set('ordenar_por', filtros.ordenar_por);
     if (filtros.direcao) params = params.set('direcao', filtros.direcao);

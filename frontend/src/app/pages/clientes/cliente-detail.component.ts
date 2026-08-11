@@ -20,7 +20,7 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { ContatosService } from '../../core/services/contatos.service';
 import { EnderecosService } from '../../core/services/enderecos.service';
 import { InteracoesService } from '../../core/services/interacoes.service';
-import { ClienteDetalhe, Contato, Endereco, Interacao } from '../../core/models';
+import { ClienteDetalhe, Contato, Endereco, Interacao, Segmento } from '../../core/models';
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
@@ -55,6 +55,9 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
             · {{ cliente.municipio_nome }}{{ cliente.municipio_uf ? ' - ' + cliente.municipio_uf : '' }}
           </ng-container>
           · <span class="status-pill" [class]="cliente.status">{{ rotuloStatus(cliente.status) }}</span>
+          <ng-container *ngIf="cliente.segmentos?.length">
+            · Segmentos: {{ nomesSegmentos(cliente.segmentos!) }}
+          </ng-container>
         </p>
       </div>
       <div class="header-actions">
@@ -470,6 +473,10 @@ export class ClienteDetailComponent implements OnInit {
       prospect: 'Prospect',
     };
     return mapa[status] || status;
+  }
+
+  nomesSegmentos(segmentos: Segmento[]): string {
+    return segmentos.map((s) => s.nome).join(', ');
   }
 
   rotuloTipo(tipo: string): string {
