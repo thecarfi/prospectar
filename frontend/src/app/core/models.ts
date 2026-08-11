@@ -78,7 +78,7 @@ export interface Endereco {
 export interface Interacao {
   id: number;
   cliente_id?: number;
-  tipo: 'chamado' | 'visita' | 'anotacao';
+  tipo: 'ligacao' | 'visita' | 'anotacao' | 'mensagem';
   assunto: string;
   descricao?: string;
   ocorreu_em: string;

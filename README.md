@@ -88,7 +88,7 @@ Acesse http://localhost:4200 e faça login com o admin padrão criado no seed.
 | `clientes` | Dados do cliente (nome, cpf_cnpj, segmento, cidade, status, observações) |
 | `contatos` | Contatos do cliente (nome, email, telefone, cargo) |
 | `enderecos` | Endereços do cliente (logradouro, bairro, cidade, UF, CEP, principal) |
-| `interacoes` | Histórico de interações (chamado, visita, anotação) |
+| `interacoes` | Histórico de interações (ligação, visita, anotação, mensagem) |
 
 ## Papéis e permissões
 

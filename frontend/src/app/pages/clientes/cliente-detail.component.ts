@@ -283,9 +283,10 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
       font-size: 12px;
       font-weight: 500;
     }
-    .tipo-pill.chamado { background: #e3f2fd; color: #1565c0; }
+    .tipo-pill.ligacao { background: #e3f2fd; color: #1565c0; }
     .tipo-pill.visita { background: #e8f5e9; color: #2e7d32; }
     .tipo-pill.anotacao { background: #f3e5f5; color: #6a1b9a; }
+    .tipo-pill.mensagem { background: #fffde7; color: #f9a825; }
   `,
 })
 export class ClienteDetailComponent implements OnInit {
@@ -472,9 +473,10 @@ export class ClienteDetailComponent implements OnInit {
 
   rotuloTipo(tipo: string): string {
     const mapa: Record<string, string> = {
-      chamado: 'Chamado',
+      ligacao: 'Ligação',
       visita: 'Visita',
       anotacao: 'Anotação',
+      mensagem: 'Mensagem',
     };
     return mapa[tipo] || tipo;
   }
@@ -670,9 +672,10 @@ export class EnderecoDialogComponent {
         <mat-form-field appearance="outline">
           <mat-label>Tipo</mat-label>
           <mat-select formControlName="tipo">
-            <mat-option value="chamado">Chamado</mat-option>
+            <mat-option value="ligacao">Ligação</mat-option>
             <mat-option value="visita">Visita</mat-option>
             <mat-option value="anotacao">Anotação</mat-option>
+            <mat-option value="mensagem">Mensagem</mat-option>
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline">

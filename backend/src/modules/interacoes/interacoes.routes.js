@@ -16,7 +16,7 @@ router.post(
   '/',
   requirePermission('interacoes:criar'),
   body('assunto').trim().notEmpty().withMessage('Assunto obrigatório'),
-  body('tipo').optional().isIn(['chamado', 'visita', 'anotacao']).withMessage('Tipo inválido'),
+  body('tipo').optional().isIn(['ligacao', 'visita', 'anotacao', 'mensagem']).withMessage('Tipo inválido'),
   validate,
   interacoesController.criar
 );
@@ -25,7 +25,7 @@ router.put(
   '/:id',
   requirePermission('interacoes:editar'),
   param('id').isInt().withMessage('ID inválido'),
-  body('tipo').optional().isIn(['chamado', 'visita', 'anotacao']).withMessage('Tipo inválido'),
+  body('tipo').optional().isIn(['ligacao', 'visita', 'anotacao', 'mensagem']).withMessage('Tipo inválido'),
   validate,
   interacoesController.atualizar
 );
