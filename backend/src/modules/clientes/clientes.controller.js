@@ -153,8 +153,12 @@ async function detalhar(req, res, next) {
       [id]
     );
     const { rows: interacoes } = await pool.query(
-      `SELECT id, tipo, assunto, descricao, ocorreu_em, criado_por, criado_em
-         FROM interacoes WHERE cliente_id = $1 ORDER BY ocorreu_em DESC`,
+      `SELECT i.id, i.tipo, i.assunto, i.descricao, i.ocorreu_em,
+              i.criado_por, i.criado_em, u.nome AS criado_por_nome
+         FROM interacoes i
+         LEFT JOIN usuarios u ON u.id = i.criado_por
+        WHERE i.cliente_id = $1
+        ORDER BY i.ocorreu_em DESC`,
       [id]
     );
     const { rows: segmentos } = await pool.query(
