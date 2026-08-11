@@ -21,13 +21,27 @@ export interface Paginacao<T> {
   limite: number;
 }
 
+export interface Estado {
+  id: number;
+  sigla: string;
+  nome: string;
+}
+
+export interface Municipio {
+  id: number;
+  estado_id: number;
+  uf: string;
+  nome: string;
+}
+
 export interface Cliente {
   id: number;
   nome: string;
   cpf_cnpj?: string;
   segmento?: string;
-  cidade?: string;
-  estado?: string;
+  municipio_id?: number;
+  municipio_nome?: string;
+  municipio_uf?: string;
   status: 'ativo' | 'inativo' | 'prospect';
   observacoes?: string;
   criado_por?: number;
@@ -69,8 +83,9 @@ export interface Endereco {
   numero?: string;
   complemento?: string;
   bairro?: string;
-  cidade?: string;
-  estado?: string;
+  municipio_id?: number;
+  municipio_nome?: string;
+  municipio_uf?: string;
   cep?: string;
   principal: boolean;
 }

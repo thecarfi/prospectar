@@ -16,9 +16,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClientesService } from '../../core/services/clientes.service';
+import { LocalizacaoService } from '../../core/services/localizacao.service';
 import { Cliente } from '../../core/models';
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 
 @Component({
   selector: 'app-cliente-list',
@@ -37,6 +39,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
     MatProgressBarModule,
     MatTooltipModule,
     PermissaoDirective,
+    SeletorMunicipioComponent,
   ],
   template: `
     <div class="header">
@@ -64,14 +67,11 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
             />
             <mat-icon matPrefix>search</mat-icon>
           </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Cidade</mat-label>
-            <input matInput formControlName="cidade" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Estado</mat-label>
-            <input matInput formControlName="estado" maxlength="2" />
-          </mat-form-field>
+          <app-seletor-municipio
+            [estadoControl]="filtros.controls.estado"
+            [municipioControl]="filtros.controls.municipio_id"
+            [permitirVazio]="true"
+          ></app-seletor-municipio>
           <mat-form-field appearance="outline">
             <mat-label>Segmento</mat-label>
             <input matInput formControlName="segmento" />
@@ -112,7 +112,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
           <ng-container matColumnDef="cidade">
             <th mat-header-cell *matHeaderCellDef>Cidade</th>
             <td mat-cell *matCellDef="let cliente">
-              {{ cliente.cidade ? cliente.cidade + (cliente.estado ? ' - ' + cliente.estado : '') : '—' }}
+              {{ cliente.municipio_nome ? cliente.municipio_nome + (cliente.municipio_uf ? ' - ' + cliente.municipio_uf : '') : '—' }}
             </td>
           </ng-container>
           <ng-container matColumnDef="segmento">
@@ -220,6 +220,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 })
 export class ClienteListComponent implements OnInit {
   private readonly clientesService = inject(ClientesService);
+  private readonly localizacao = inject(LocalizacaoService);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
@@ -227,8 +228,8 @@ export class ClienteListComponent implements OnInit {
 
   readonly filtros = this.fb.nonNullable.group({
     busca: [''],
-    cidade: [''],
     estado: [''],
+    municipio_id: [null as number | null],
     segmento: [''],
     status: [''],
   });
@@ -262,13 +263,14 @@ export class ClienteListComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
-    const { busca, cidade, estado, segmento, status } =
+    const { busca, estado, municipio_id, segmento, status } =
       this.filtros.getRawValue();
+    const municipio = this.localizacao.obterMunicipio(municipio_id);
     this.clientesService
       .listar({
         busca: busca || undefined,
-        cidade: cidade || undefined,
-        estado: estado ? estado.toUpperCase() : undefined,
+        cidade: municipio?.nome,
+        estado: estado || undefined,
         segmento: segmento || undefined,
         status: status || undefined,
         pagina: this.pagina,

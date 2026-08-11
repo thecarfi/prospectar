@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClientesService } from '../../core/services/clientes.service';
 import { Cliente } from '../../core/models';
+import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 
 @Component({
   selector: 'app-cliente-form',
@@ -23,6 +24,7 @@ import { Cliente } from '../../core/models';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    SeletorMunicipioComponent,
   ],
   template: `
     <div class="header">
@@ -56,15 +58,10 @@ import { Cliente } from '../../core/models';
             <input matInput formControlName="segmento" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Cidade</mat-label>
-            <input matInput formControlName="cidade" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Estado</mat-label>
-            <input matInput formControlName="estado" maxlength="2" />
-          </mat-form-field>
+          <app-seletor-municipio
+            [estadoControl]="formulario.controls.estado"
+            [municipioControl]="formulario.controls.municipio_id"
+          ></app-seletor-municipio>
 
           <mat-form-field appearance="outline" class="full">
             <mat-label>Observações</mat-label>
@@ -120,8 +117,8 @@ export class ClienteFormComponent implements OnInit {
     cpf_cnpj: [''],
     status: ['ativo' as string],
     segmento: [''],
-    cidade: [''],
     estado: [''],
+    municipio_id: [null as number | null],
     observacoes: [''],
   });
 
@@ -140,8 +137,8 @@ export class ClienteFormComponent implements OnInit {
           cpf_cnpj: cliente.cpf_cnpj || '',
           status: cliente.status,
           segmento: cliente.segmento || '',
-          cidade: cliente.cidade || '',
-          estado: cliente.estado || '',
+          estado: cliente.municipio_uf || '',
+          municipio_id: cliente.municipio_id || null,
           observacoes: cliente.observacoes || '',
         });
         this.cdr.markForCheck();
@@ -159,8 +156,7 @@ export class ClienteFormComponent implements OnInit {
       ...valor,
       cpf_cnpj: valor.cpf_cnpj || null,
       segmento: valor.segmento || null,
-      cidade: valor.cidade || null,
-      estado: valor.estado ? valor.estado.toUpperCase() : null,
+      municipio_id: valor.municipio_id,
       observacoes: valor.observacoes || null,
     };
 

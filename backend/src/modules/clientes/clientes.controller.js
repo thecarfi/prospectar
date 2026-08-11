@@ -1,6 +1,16 @@
 const { pool } = require('../../config/db');
 const ApiError = require('../../utils/api-error');
 
+async function validarMunicipio(municipioId) {
+  const { rows } = await pool.query(
+    'SELECT id FROM municipios WHERE id = $1',
+    [municipioId]
+  );
+  if (!rows[0]) {
+    throw new ApiError(400, 'Município inválido');
+  }
+}
+
 async function listar(req, res, next) {
   try {
     const {
@@ -17,32 +27,33 @@ async function listar(req, res, next) {
     const params = [];
 
     const colunasOrdenacao = ['nome', 'criado_em', 'cidade'];
-    const ordenarPor = colunasOrdenacao.includes(req.query.ordenar_por)
+    const colunaSelecionada = colunasOrdenacao.includes(req.query.ordenar_por)
       ? req.query.ordenar_por
       : 'nome';
+    const ordenarPor = colunaSelecionada === 'cidade' ? 'm.nome' : `c.${colunaSelecionada}`;
     const direcao = ['asc', 'desc'].includes(req.query.direcao)
       ? req.query.direcao
       : 'asc';
 
     if (busca) {
       params.push(`%${busca}%`);
-      condicoes.push(`(nome ILIKE $${params.length} OR cpf_cnpj ILIKE $${params.length})`);
+      condicoes.push(`(c.nome ILIKE $${params.length} OR c.cpf_cnpj ILIKE $${params.length})`);
     }
     if (cidade) {
-      params.push(cidade);
-      condicoes.push(`cidade ILIKE $${params.length}`);
+      params.push(`%${cidade}%`);
+      condicoes.push(`m.nome ILIKE $${params.length}`);
     }
     if (estado) {
       params.push(estado);
-      condicoes.push(`estado = $${params.length}`);
+      condicoes.push(`e.sigla = $${params.length}`);
     }
     if (segmento) {
       params.push(segmento);
-      condicoes.push(`segmento ILIKE $${params.length}`);
+      condicoes.push(`c.segmento ILIKE $${params.length}`);
     }
     if (status) {
       params.push(status);
-      condicoes.push(`status = $${params.length}`);
+      condicoes.push(`c.status = $${params.length}`);
     }
 
     const whereSql = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
@@ -50,17 +61,22 @@ async function listar(req, res, next) {
     const limiteNum = Math.min(100, Math.max(1, Number(limite) || 10));
     const offset = (paginaNum - 1) * limiteNum;
 
+    const fromSql = `FROM clientes c
+         LEFT JOIN municipios m ON m.id = c.municipio_id
+         LEFT JOIN estados e ON e.id = m.estado_id`;
+
     const { rows: totalRows } = await pool.query(
-      `SELECT COUNT(*)::int AS total FROM clientes ${whereSql}`,
+      `SELECT COUNT(*)::int AS total ${fromSql} ${whereSql}`,
       params
     );
 
     const { rows } = await pool.query(
-      `SELECT id, nome, cpf_cnpj, segmento, cidade, estado, status,
-              observacoes, criado_por, criado_em, atualizado_em
-         FROM clientes
+      `SELECT c.id, c.nome, c.cpf_cnpj, c.segmento, c.status,
+              c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
+              c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
+         ${fromSql}
          ${whereSql}
-        ORDER BY ${ordenarPor} ${direcao}, id
+        ORDER BY ${ordenarPor} ${direcao}, c.id
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limiteNum, offset]
     );
@@ -96,9 +112,13 @@ async function detalhar(req, res, next) {
     const { id } = req.params;
 
     const { rows: clientes } = await pool.query(
-      `SELECT id, nome, cpf_cnpj, segmento, cidade, estado, status,
-              observacoes, criado_por, criado_em, atualizado_em
-         FROM clientes WHERE id = $1`,
+      `SELECT c.id, c.nome, c.cpf_cnpj, c.segmento, c.status,
+              c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
+              c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
+         FROM clientes c
+         LEFT JOIN municipios m ON m.id = c.municipio_id
+         LEFT JOIN estados e ON e.id = m.estado_id
+        WHERE c.id = $1`,
       [id]
     );
 
@@ -113,9 +133,13 @@ async function detalhar(req, res, next) {
       [id]
     );
     const { rows: enderecos } = await pool.query(
-      `SELECT id, logradouro, numero, complemento, bairro, cidade, estado,
-              cep, principal
-         FROM enderecos WHERE cliente_id = $1 ORDER BY principal DESC, id`,
+      `SELECT e.id, e.logradouro, e.numero, e.complemento, e.bairro,
+              e.municipio_id, m.nome AS municipio_nome, es.sigla AS municipio_uf,
+              e.cep, e.principal
+         FROM enderecos e
+         LEFT JOIN municipios m ON m.id = e.municipio_id
+         LEFT JOIN estados es ON es.id = m.estado_id
+        WHERE e.cliente_id = $1 ORDER BY e.principal DESC, e.id`,
       [id]
     );
     const { rows: interacoes } = await pool.query(
@@ -136,18 +160,21 @@ async function criar(req, res, next) {
       nome,
       cpf_cnpj,
       segmento,
-      cidade,
-      estado,
+      municipio_id,
       status = 'ativo',
       observacoes,
     } = req.body;
 
+    if (municipio_id != null) {
+      await validarMunicipio(municipio_id);
+    }
+
     const { rows } = await pool.query(
-      `INSERT INTO clientes (nome, cpf_cnpj, segmento, cidade, estado, status, observacoes, criado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, nome, cpf_cnpj, segmento, cidade, estado, status,
+      `INSERT INTO clientes (nome, cpf_cnpj, segmento, municipio_id, status, observacoes, criado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, nome, cpf_cnpj, segmento, municipio_id, status,
                  observacoes, criado_por, criado_em, atualizado_em`,
-      [nome, cpf_cnpj || null, segmento || null, cidade || null, estado || null, status, observacoes || null, req.user.id]
+      [nome, cpf_cnpj || null, segmento || null, municipio_id ?? null, status, observacoes || null, req.user.id]
     );
 
     res.status(201).json(rows[0]);
@@ -166,8 +193,7 @@ async function atualizar(req, res, next) {
       nome,
       cpf_cnpj,
       segmento,
-      cidade,
-      estado,
+      municipio_id,
       status,
       observacoes,
     } = req.body;
@@ -180,20 +206,23 @@ async function atualizar(req, res, next) {
       throw new ApiError(404, 'Cliente não encontrado');
     }
 
+    if (municipio_id != null) {
+      await validarMunicipio(municipio_id);
+    }
+
     const { rows } = await pool.query(
       `UPDATE clientes
           SET nome = COALESCE($1, nome),
               cpf_cnpj = COALESCE($2, cpf_cnpj),
               segmento = COALESCE($3, segmento),
-              cidade = COALESCE($4, cidade),
-              estado = COALESCE($5, estado),
-              status = COALESCE($6, status),
-              observacoes = COALESCE($7, observacoes),
+              municipio_id = COALESCE($4, municipio_id),
+              status = COALESCE($5, status),
+              observacoes = COALESCE($6, observacoes),
               atualizado_em = NOW()
-        WHERE id = $8
-        RETURNING id, nome, cpf_cnpj, segmento, cidade, estado, status,
+        WHERE id = $7
+        RETURNING id, nome, cpf_cnpj, segmento, municipio_id, status,
                   observacoes, criado_por, criado_em, atualizado_em`,
-      [nome ?? null, cpf_cnpj ?? null, segmento ?? null, cidade ?? null, estado ?? null, status ?? null, observacoes ?? null, id]
+      [nome ?? null, cpf_cnpj ?? null, segmento ?? null, municipio_id ?? null, status ?? null, observacoes ?? null, id]
     );
 
     res.json(rows[0]);

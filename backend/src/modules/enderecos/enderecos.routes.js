@@ -16,6 +16,7 @@ router.post(
   '/',
   requirePermission('enderecos:criar'),
   body('logradouro').trim().notEmpty().withMessage('Logradouro obrigatório'),
+  body('municipio_id').optional().isInt().withMessage('Município inválido'),
   validate,
   enderecosController.criar
 );
@@ -24,6 +25,7 @@ router.put(
   '/:id',
   requirePermission('enderecos:editar'),
   param('id').isInt().withMessage('ID inválido'),
+  body('municipio_id').optional().isInt().withMessage('Município inválido'),
   validate,
   enderecosController.atualizar
 );

@@ -37,6 +37,7 @@ router.post(
   requirePermission('clientes:criar'),
   body('nome').trim().notEmpty().withMessage('Nome obrigatório'),
   body('cpf_cnpj').optional({ nullable: true }).trim(),
+  body('municipio_id').optional().isInt().withMessage('Município inválido'),
   body('status').optional().isIn(['ativo', 'inativo', 'prospect']).withMessage('Status inválido'),
   validate,
   clientesController.criar
@@ -46,6 +47,7 @@ router.put(
   '/:id',
   requirePermission('clientes:editar'),
   param('id').isInt().withMessage('ID inválido'),
+  body('municipio_id').optional().isInt().withMessage('Município inválido'),
   body('status').optional().isIn(['ativo', 'inativo', 'prospect']).withMessage('Status inválido'),
   validate,
   clientesController.atualizar

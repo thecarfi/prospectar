@@ -23,6 +23,7 @@ import { InteracoesService } from '../../core/services/interacoes.service';
 import { ClienteDetalhe, Contato, Endereco, Interacao } from '../../core/models';
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 
 @Component({
   selector: 'app-cliente-detail',
@@ -50,8 +51,8 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
         <h1>{{ cliente.nome }}</h1>
         <p class="subtitle">
           {{ cliente.cpf_cnpj || 'Sem CPF/CNPJ' }}
-          <ng-container *ngIf="cliente.cidade">
-            · {{ cliente.cidade }}{{ cliente.estado ? ' - ' + cliente.estado : '' }}
+          <ng-container *ngIf="cliente.municipio_nome">
+            · {{ cliente.municipio_nome }}{{ cliente.municipio_uf ? ' - ' + cliente.municipio_uf : '' }}
           </ng-container>
           · <span class="status-pill" [class]="cliente.status">{{ rotuloStatus(cliente.status) }}</span>
         </p>
@@ -156,7 +157,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
               <ng-container matColumnDef="cidade">
                 <th mat-header-cell *matHeaderCellDef>Cidade</th>
                 <td mat-cell *matCellDef="let endereco">
-                  {{ endereco.cidade || '—' }}{{ endereco.estado ? ' - ' + endereco.estado : '' }}
+                  {{ endereco.municipio_nome || '—' }}{{ endereco.municipio_uf ? ' - ' + endereco.municipio_uf : '' }}
                 </td>
               </ng-container>
               <ng-container matColumnDef="cep">
@@ -559,6 +560,7 @@ export class ContatoDialogComponent {
     MatInputModule,
     MatCheckboxModule,
     MatButtonModule,
+    SeletorMunicipioComponent,
   ],
   template: `
     <h2 mat-dialog-title>{{ dados ? 'Editar endereço' : 'Novo endereço' }}</h2>
@@ -586,16 +588,10 @@ export class ContatoDialogComponent {
           <mat-label>Bairro</mat-label>
           <input matInput formControlName="bairro" />
         </mat-form-field>
-        <div class="row">
-          <mat-form-field appearance="outline" class="grow">
-            <mat-label>Cidade</mat-label>
-            <input matInput formControlName="cidade" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="uf">
-            <mat-label>UF</mat-label>
-            <input matInput formControlName="estado" maxlength="2" />
-          </mat-form-field>
-        </div>
+        <app-seletor-municipio
+          [estadoControl]="formulario.controls.estado"
+          [municipioControl]="formulario.controls.municipio_id"
+        ></app-seletor-municipio>
         <mat-checkbox formControlName="principal">Endereço principal</mat-checkbox>
       </form>
     </mat-dialog-content>
@@ -628,28 +624,35 @@ export class EnderecoDialogComponent {
     numero: [''],
     complemento: [''],
     bairro: [''],
-    cidade: [''],
     estado: [''],
+    municipio_id: [null as number | null],
     cep: [''],
     principal: [false],
   });
 
   constructor(@Inject(MAT_DIALOG_DATA) public readonly dados: Endereco | null) {
     if (dados) {
-      this.formulario.patchValue(dados);
+      this.formulario.patchValue({
+        logradouro: dados.logradouro,
+        numero: dados.numero || '',
+        complemento: dados.complemento || '',
+        bairro: dados.bairro || '',
+        estado: dados.municipio_uf || '',
+        municipio_id: dados.municipio_id || null,
+        cep: dados.cep || '',
+        principal: dados.principal,
+      });
     }
   }
 
   salvar(): void {
     if (this.formulario.invalid) return;
-    const valor = this.formulario.getRawValue();
+    const { estado, ...valor } = this.formulario.getRawValue();
     this.dialogRef.close({
       ...valor,
       numero: valor.numero || null,
       complemento: valor.complemento || null,
       bairro: valor.bairro || null,
-      cidade: valor.cidade || null,
-      estado: valor.estado ? valor.estado.toUpperCase() : null,
       cep: valor.cep || null,
     });
   }

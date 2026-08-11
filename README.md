@@ -85,10 +85,11 @@ Acesse http://localhost:4200 e faça login com o admin padrão criado no seed.
 | `usuarios` | Usuários do sistema (nome, email, senha hash, papel, ativo) |
 | `permissoes` | Permissões granulares (modulo + acao) |
 | `papel_permissoes` | Vínculo entre papéis e permissões |
-| `clientes` | Dados do cliente (nome, cpf_cnpj, segmento, cidade, status, observações) |
+| `clientes` | Dados do cliente (nome, cpf_cnpj, segmento, município, status, observações) |
 | `contatos` | Contatos do cliente (nome, email, telefone, cargo) |
-| `enderecos` | Endereços do cliente (logradouro, bairro, cidade, UF, CEP, principal) |
+| `enderecos` | Endereços do cliente (logradouro, bairro, município, CEP, principal) |
 | `interacoes` | Histórico de interações (ligação, visita, anotação, mensagem) |
+| `localizacao` | Estados e municípios de referência (IBGE), vinculados via `municipio_id` |
 
 ## Papéis e permissões
 
@@ -115,10 +116,13 @@ e pela diretiva `appPermissao`.
 | GET/POST | `/api/clientes/:id/contatos` | `contatos:ver` / `contatos:criar` |
 | GET/POST | `/api/clientes/:id/enderecos` | `enderecos:ver` / `enderecos:criar` |
 | GET/POST | `/api/clientes/:id/interacoes` | `interacoes:ver` / `interacoes:criar` |
+| GET | `/api/localizacao/estados` | `localizacao:ver` |
+| GET | `/api/localizacao/municipios` | `localizacao:ver` |
 | GET/POST/PUT/DELETE | `/api/usuarios` | `usuarios:ver` / `usuarios:gerenciar` |
 
-Busca e filtros em `GET /api/clientes`: `busca` (nome/CPF/CNPJ), `cidade`, `estado`,
-`segmento`, `status`, `pagina`, `limite`, `ordenar_por` (nome, criado_em, cidade), `direcao`.
+Busca e filtros em `GET /api/clientes`: `busca` (nome/CPF/CNPJ), `cidade` (nome do município),
+`estado` (UF), `segmento`, `status`, `pagina`, `limite`,
+`ordenar_por` (nome, criado_em, cidade), `direcao`.
 
 ## Migrations
 

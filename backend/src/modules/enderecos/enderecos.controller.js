@@ -14,9 +14,13 @@ async function validarCliente(clienteId) {
 async function listar(req, res, next) {
   try {
     const { rows } = await pool.query(
-      `SELECT id, logradouro, numero, complemento, bairro, cidade, estado,
-              cep, principal
-         FROM enderecos WHERE cliente_id = $1 ORDER BY principal DESC, id`,
+      `SELECT e.id, e.logradouro, e.numero, e.complemento, e.bairro,
+              e.municipio_id, m.nome AS municipio_nome, es.sigla AS municipio_uf,
+              e.cep, e.principal
+         FROM enderecos e
+         LEFT JOIN municipios m ON m.id = e.municipio_id
+         LEFT JOIN estados es ON es.id = m.estado_id
+        WHERE e.cliente_id = $1 ORDER BY e.principal DESC, e.id`,
       [req.params.clienteId]
     );
     res.json(rows);
@@ -33,8 +37,7 @@ async function criar(req, res, next) {
       numero,
       complemento,
       bairro,
-      cidade,
-      estado,
+      municipio_id,
       cep,
       principal = false,
     } = req.body;
@@ -42,11 +45,11 @@ async function criar(req, res, next) {
     await validarCliente(clienteId);
 
     const { rows } = await pool.query(
-      `INSERT INTO enderecos (cliente_id, logradouro, numero, complemento, bairro, cidade, estado, cep, principal)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, logradouro, numero, complemento, bairro, cidade, estado,
+      `INSERT INTO enderecos (cliente_id, logradouro, numero, complemento, bairro, municipio_id, cep, principal)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, logradouro, numero, complemento, bairro, municipio_id,
                  cep, principal`,
-      [clienteId, logradouro, numero || null, complemento || null, bairro || null, cidade || null, estado || null, cep || null, principal]
+      [clienteId, logradouro, numero || null, complemento || null, bairro || null, municipio_id ?? null, cep || null, principal]
     );
 
     res.status(201).json(rows[0]);
@@ -63,8 +66,7 @@ async function atualizar(req, res, next) {
       numero,
       complemento,
       bairro,
-      cidade,
-      estado,
+      municipio_id,
       cep,
       principal,
     } = req.body;
@@ -75,15 +77,14 @@ async function atualizar(req, res, next) {
               numero = COALESCE($2, numero),
               complemento = COALESCE($3, complemento),
               bairro = COALESCE($4, bairro),
-              cidade = COALESCE($5, cidade),
-              estado = COALESCE($6, estado),
-              cep = COALESCE($7, cep),
-              principal = COALESCE($8, principal),
+              municipio_id = COALESCE($5, municipio_id),
+              cep = COALESCE($6, cep),
+              principal = COALESCE($7, principal),
               atualizado_em = NOW()
-        WHERE id = $9 AND cliente_id = $10
-        RETURNING id, logradouro, numero, complemento, bairro, cidade, estado,
+        WHERE id = $8 AND cliente_id = $9
+        RETURNING id, logradouro, numero, complemento, bairro, municipio_id,
                   cep, principal`,
-      [logradouro ?? null, numero ?? null, complemento ?? null, bairro ?? null, cidade ?? null, estado ?? null, cep ?? null, principal ?? null, id, clienteId]
+      [logradouro ?? null, numero ?? null, complemento ?? null, bairro ?? null, municipio_id ?? null, cep ?? null, principal ?? null, id, clienteId]
     );
 
     if (!rows[0]) {

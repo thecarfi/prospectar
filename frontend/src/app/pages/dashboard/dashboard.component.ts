@@ -69,7 +69,7 @@ import { Cliente } from '../../core/models';
           </ng-container>
           <ng-container matColumnDef="cidade">
             <th mat-header-cell *matHeaderCellDef>Cidade</th>
-            <td mat-cell *matCellDef="let cliente">{{ cliente.cidade || '—' }}</td>
+            <td mat-cell *matCellDef="let cliente">{{ cliente.municipio_nome || '—' }}</td>
           </ng-container>
           <ng-container matColumnDef="segmento">
             <th mat-header-cell *matHeaderCellDef>Segmento</th>
