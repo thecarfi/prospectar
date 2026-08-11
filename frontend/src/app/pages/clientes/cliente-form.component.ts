@@ -1,6 +1,12 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +19,19 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { Cliente, Segmento } from '../../core/models';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 import { SeletorSegmentosComponent } from '../../shared/seletor-segmentos.component';
+
+export function validarDocumento(
+  control: AbstractControl
+): ValidationErrors | null {
+  const valor = (control.value ?? '').toString();
+  if (!valor.trim()) {
+    return null;
+  }
+  const digitos = valor.replace(/\D/g, '');
+  return digitos.length === 11 || digitos.length === 14
+    ? null
+    : { documentoInvalido: true };
+}
 
 @Component({
   selector: 'app-cliente-form',
@@ -43,7 +62,17 @@ import { SeletorSegmentosComponent } from '../../shared/seletor-segmentos.compon
 
           <mat-form-field appearance="outline">
             <mat-label>CPF/CNPJ</mat-label>
-            <input matInput formControlName="cpf_cnpj" placeholder="Somente números" />
+            <input
+              matInput
+              formControlName="cpf_cnpj"
+              placeholder="CPF ou CNPJ"
+              [maxlength]="limiteDocumento"
+              (input)="onDocumentoInput()"
+              (blur)="formatarDocumento()"
+            />
+            @if (formulario.controls.cpf_cnpj.hasError('documentoInvalido')) {
+              <mat-error>Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).</mat-error>
+            }
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -116,7 +145,7 @@ export class ClienteFormComponent implements OnInit {
 
   readonly formulario = this.fb.nonNullable.group({
     nome: ['', Validators.required],
-    cpf_cnpj: [''],
+    cpf_cnpj: ['', validarDocumento],
     status: ['ativo' as string],
     segmentos: this.fb.control<Segmento[]>([]),
     estado: [''],
@@ -148,8 +177,46 @@ export class ClienteFormComponent implements OnInit {
     }
   }
 
+  get limiteDocumento(): number {
+    const valor = (this.formulario.controls.cpf_cnpj.value ?? '').toString();
+    return valor.includes('/') ? 18 : 14;
+  }
+
+  onDocumentoInput(): void {
+    this.cdr.markForCheck();
+  }
+
+  formatarDocumento(): void {
+    const controle = this.formulario.controls.cpf_cnpj;
+    const valor = (controle.value ?? '').toString();
+    const digitos = valor.replace(/\D/g, '');
+    if (digitos.length === 11) {
+      controle.setValue(this.formatarCpf(digitos));
+    } else if (digitos.length === 14) {
+      controle.setValue(this.formatarCnpj(digitos));
+    }
+  }
+
+  private formatarCpf(digitos: string): string {
+    return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9, 11)}`;
+  }
+
+  private formatarCnpj(digitos: string): string {
+    return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12, 14)}`;
+  }
+
   salvar(): void {
+    this.formatarDocumento();
     if (this.formulario.invalid || this.salvando) {
+      if (this.formulario.invalid) {
+        this.formulario.markAllAsTouched();
+        this.cdr.markForCheck();
+        this.snackBar.open(
+          'Verifique o campo CPF/CNPJ.',
+          'Fechar',
+          { duration: 4000 }
+        );
+      }
       return;
     }
     this.salvando = true;
