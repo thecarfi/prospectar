@@ -11,6 +11,16 @@ async function validarMunicipio(municipioId) {
   }
 }
 
+async function validarStatus(statusId) {
+  const { rows } = await pool.query(
+    'SELECT id FROM status_clientes WHERE id = $1',
+    [statusId]
+  );
+  if (!rows[0]) {
+    throw new ApiError(400, 'Status inválido');
+  }
+}
+
 async function listar(req, res, next) {
   try {
     const {
@@ -18,7 +28,7 @@ async function listar(req, res, next) {
       cidade,
       estado,
       segmento_id,
-      status,
+      status_id,
       pagina = 1,
       limite = 10,
     } = req.query;
@@ -57,9 +67,12 @@ async function listar(req, res, next) {
         );
       }
     }
-    if (status) {
-      params.push(status);
-      condicoes.push(`c.status = $${params.length}`);
+    if (status_id) {
+      const id = parseInt(status_id, 10);
+      if (Number.isInteger(id)) {
+        params.push(id);
+        condicoes.push(`c.status_id = $${params.length}`);
+      }
     }
 
     const whereSql = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
@@ -69,7 +82,8 @@ async function listar(req, res, next) {
 
     const fromSql = `FROM clientes c
          LEFT JOIN municipios m ON m.id = c.municipio_id
-         LEFT JOIN estados e ON e.id = m.estado_id`;
+         LEFT JOIN estados e ON e.id = m.estado_id
+         LEFT JOIN status_clientes st ON st.id = c.status_id`;
 
     const { rows: totalRows } = await pool.query(
       `SELECT COUNT(*)::int AS total ${fromSql} ${whereSql}`,
@@ -77,7 +91,8 @@ async function listar(req, res, next) {
     );
 
     const { rows } = await pool.query(
-      `SELECT c.id, c.nome, c.cpf_cnpj, c.status,
+      `SELECT c.id, c.nome, c.cpf_cnpj,
+              c.status_id, st.nome AS status_nome, st.cor AS status_cor,
               c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
               c.observacoes, c.criado_por, c.criado_em, c.atualizado_em,
               COALESCE((SELECT string_agg(s.nome, ', ' ORDER BY s.nome)
@@ -104,14 +119,20 @@ async function listar(req, res, next) {
 
 async function estatisticas(req, res, next) {
   try {
-    const { rows } = await pool.query(
-      `SELECT COUNT(*)::int AS total,
-              COUNT(*) FILTER (WHERE status = 'ativo')::int AS ativos,
-              COUNT(*) FILTER (WHERE status = 'inativo')::int AS inativos,
-              COUNT(*) FILTER (WHERE status = 'prospect')::int AS prospects
-         FROM clientes`
+    const { rows: total } = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM clientes'
     );
-    res.json(rows[0]);
+    const { rows: porStatus } = await pool.query(
+      `SELECT st.id AS status_id,
+              st.nome AS status_nome,
+              st.cor AS status_cor,
+              COUNT(c.id)::int AS total
+         FROM status_clientes st
+         LEFT JOIN clientes c ON c.status_id = st.id
+        GROUP BY st.id, st.nome, st.cor
+        ORDER BY st.id`
+    );
+    res.json({ total: total[0].total, por_status: porStatus });
   } catch (err) {
     next(err);
   }
@@ -122,12 +143,14 @@ async function detalhar(req, res, next) {
     const { id } = req.params;
 
     const { rows: clientes } = await pool.query(
-      `SELECT c.id, c.nome, c.cpf_cnpj, c.status,
+      `SELECT c.id, c.nome, c.cpf_cnpj,
+              c.status_id, st.nome AS status_nome, st.cor AS status_cor,
               c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
               c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
          FROM clientes c
          LEFT JOIN municipios m ON m.id = c.municipio_id
          LEFT JOIN estados e ON e.id = m.estado_id
+         LEFT JOIN status_clientes st ON st.id = c.status_id
         WHERE c.id = $1`,
       [id]
     );
@@ -183,7 +206,7 @@ async function criar(req, res, next) {
       cpf_cnpj,
       segmento_ids,
       municipio_id,
-      status = 'ativo',
+      status_id,
       observacoes,
     } = req.body;
 
@@ -191,12 +214,25 @@ async function criar(req, res, next) {
       await validarMunicipio(municipio_id);
     }
 
+    let statusFinal = status_id;
+    if (statusFinal == null) {
+      const { rows: primeiro } = await pool.query(
+        'SELECT id FROM status_clientes ORDER BY id LIMIT 1'
+      );
+      if (!primeiro[0]) {
+        throw new ApiError(400, 'Nenhum status cadastrado');
+      }
+      statusFinal = primeiro[0].id;
+    } else {
+      await validarStatus(statusFinal);
+    }
+
     const { rows } = await pool.query(
-      `INSERT INTO clientes (nome, cpf_cnpj, municipio_id, status, observacoes, criado_por)
+      `INSERT INTO clientes (nome, cpf_cnpj, municipio_id, status_id, observacoes, criado_por)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, nome, cpf_cnpj, municipio_id, status,
+       RETURNING id, nome, cpf_cnpj, municipio_id, status_id,
                  observacoes, criado_por, criado_em, atualizado_em`,
-      [nome, cpf_cnpj || null, municipio_id ?? null, status, observacoes || null, req.user.id]
+      [nome, cpf_cnpj || null, municipio_id ?? null, statusFinal, observacoes || null, req.user.id]
     );
 
     if (Array.isArray(segmento_ids) && segmento_ids.length > 0) {
@@ -224,13 +260,16 @@ async function atualizar(req, res, next) {
     cpf_cnpj,
     segmento_ids,
     municipio_id,
-    status,
+    status_id,
     observacoes,
   } = req.body;
 
   try {
     if (municipio_id != null) {
       await validarMunicipio(municipio_id);
+    }
+    if (status_id != null) {
+      await validarStatus(status_id);
     }
 
     const client = await pool.connect();
@@ -250,13 +289,13 @@ async function atualizar(req, res, next) {
             SET nome = COALESCE($1, nome),
                 cpf_cnpj = COALESCE($2, cpf_cnpj),
                 municipio_id = COALESCE($3, municipio_id),
-                status = COALESCE($4, status),
+                status_id = COALESCE($4, status_id),
                 observacoes = COALESCE($5, observacoes),
                 atualizado_em = NOW()
           WHERE id = $6
-          RETURNING id, nome, cpf_cnpj, municipio_id, status,
+          RETURNING id, nome, cpf_cnpj, municipio_id, status_id,
                     observacoes, criado_por, criado_em, atualizado_em`,
-        [nome ?? null, cpf_cnpj ?? null, municipio_id ?? null, status ?? null, observacoes ?? null, id]
+        [nome ?? null, cpf_cnpj ?? null, municipio_id ?? null, status_id ?? null, observacoes ?? null, id]
       );
 
       if ('segmento_ids' in req.body) {

@@ -1,18 +1,19 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
-import { NgIf } from '@angular/common';
+import { NgIf, NgFor } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ClientesService } from '../../core/services/clientes.service';
-import { Cliente } from '../../core/models';
+import { Cliente, EstatisticasCliente } from '../../core/models';
 
 @Component({
   selector: 'app-dashboard',
   imports: [
     NgIf,
+    NgFor,
     RouterLink,
     MatCardModule,
     MatIconModule,
@@ -30,25 +31,14 @@ import { Cliente } from '../../core/models';
           <div class="stat-label">Total de clientes</div>
         </div>
       </mat-card>
-      <mat-card class="stat-card">
-        <mat-icon class="stat-icon ativo">check_circle</mat-icon>
+      <mat-card
+        class="stat-card"
+        *ngFor="let status of estatisticas?.por_status ?? []"
+      >
+        <mat-icon class="stat-icon" [style.color]="status.status_cor">circle</mat-icon>
         <div>
-          <div class="stat-value">{{ estatisticas?.ativos ?? 0 }}</div>
-          <div class="stat-label">Ativos</div>
-        </div>
-      </mat-card>
-      <mat-card class="stat-card">
-        <mat-icon class="stat-icon inativo">cancel</mat-icon>
-        <div>
-          <div class="stat-value">{{ estatisticas?.inativos ?? 0 }}</div>
-          <div class="stat-label">Inativos</div>
-        </div>
-      </mat-card>
-      <mat-card class="stat-card">
-        <mat-icon class="stat-icon prospect">trending_up</mat-icon>
-        <div>
-          <div class="stat-value">{{ estatisticas?.prospects ?? 0 }}</div>
-          <div class="stat-label">Prospects</div>
+          <div class="stat-value">{{ status.total }}</div>
+          <div class="stat-label">{{ status.status_nome }}</div>
         </div>
       </mat-card>
     </div>
@@ -78,8 +68,12 @@ import { Cliente } from '../../core/models';
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
             <td mat-cell *matCellDef="let cliente">
-              <span class="status-pill" [class]="cliente.status">
-                {{ rotuloStatus(cliente.status) }}
+              <span
+                class="status-pill"
+                [style.background]="corFundo(cliente.status_cor)"
+                [style.color]="cliente.status_cor || '#424242'"
+              >
+                {{ cliente.status_nome || '—' }}
               </span>
             </td>
           </ng-container>
@@ -121,9 +115,6 @@ import { Cliente } from '../../core/models';
       height: 40px;
     }
     .stat-icon.total { color: #3f51b5; }
-    .stat-icon.ativo { color: #4caf50; }
-    .stat-icon.inativo { color: #f44336; }
-    .stat-icon.prospect { color: #ff9800; }
     .stat-value {
       font-size: 26px;
       font-weight: 500;
@@ -141,9 +132,6 @@ import { Cliente } from '../../core/models';
       font-size: 12px;
       font-weight: 500;
     }
-    .status-pill.ativo { background: #e8f5e9; color: #2e7d32; }
-    .status-pill.inativo { background: #fbe9e7; color: #c62828; }
-    .status-pill.prospect { background: #fff3e0; color: #e65100; }
     .empty {
       color: rgba(0, 0, 0, 0.5);
       text-align: center;
@@ -155,7 +143,7 @@ export class DashboardComponent implements OnInit {
   private readonly clientesService = inject(ClientesService);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  estatisticas: { total: number; ativos: number; inativos: number; prospects: number } | null = null;
+  estatisticas: EstatisticasCliente | null = null;
   clientesRecentes: Cliente[] = [];
   carregando = true;
   readonly colunas = ['nome', 'cidade', 'segmento', 'status', 'acoes'];
@@ -181,12 +169,17 @@ export class DashboardComponent implements OnInit {
       });
   }
 
-  rotuloStatus(status: string): string {
-    const mapa: Record<string, string> = {
-      ativo: 'Ativo',
-      inativo: 'Inativo',
-      prospect: 'Prospect',
-    };
-    return mapa[status] || status;
+  corFundo(cor?: string): string {
+    if (!cor) {
+      return '#eceff1';
+    }
+    const hex = cor.replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+      return '#eceff1';
+    }
+    return `rgba(${r}, ${g}, ${b}, 0.12)`;
   }
 }

@@ -85,7 +85,8 @@ Acesse http://localhost:4200 e faça login com o admin padrão criado no seed.
 | `usuarios` | Usuários do sistema (nome, email, senha hash, papel, ativo) |
 | `permissoes` | Permissões granulares (modulo + acao) |
 | `papel_permissoes` | Vínculo entre papéis e permissões |
-| `clientes` | Dados do cliente (nome, cpf_cnpj, segmento, município, status, observações) |
+| `clientes` | Dados do cliente (nome, cpf_cnpj, segmentos, município, status, observações) |
+| `status_clientes` | Status parametrizáveis aplicáveis ao cliente (nome, descrição, cor) |
 | `contatos` | Contatos do cliente (nome, email, telefone, cargo) |
 | `enderecos` | Endereços do cliente (logradouro, bairro, município, CEP, principal) |
 | `interacoes` | Histórico de interações (ligação, visita, anotação, mensagem) |
@@ -100,6 +101,10 @@ Acesse http://localhost:4200 e faça login com o admin padrão criado no seed.
 Permissões granulares (ex.: `clientes:criar`, `contatos:editar`, `usuarios:gerenciar`) são
 validadas no backend pelo middleware `requirePermission` e refletidas no frontend por guards
 e pela diretiva `appPermissao`.
+
+O acesso ao módulo **Configurações** (menu e rota) é controlado por `configuracao:ver`; cada
+aba dentro dele tem permissão própria: `segmentos:ver` (aba Segmentos) e `status_clientes:ver`
+(aba Status de Clientes).
 
 ## Endpoints principais
 
@@ -118,10 +123,12 @@ e pela diretiva `appPermissao`.
 | GET/POST | `/api/clientes/:id/interacoes` | `interacoes:ver` / `interacoes:criar` |
 | GET | `/api/localizacao/estados` | autenticado (qualquer papel) |
 | GET | `/api/localizacao/municipios` | autenticado (qualquer papel) |
+| GET/POST/PUT/DELETE | `/api/segmentos` | `segmentos:ver` / `segmentos:criar` / `segmentos:editar` / `segmentos:excluir` |
+| GET/POST/PUT/DELETE | `/api/status-clientes` | `status_clientes:ver` / `status_clientes:criar` / `status_clientes:editar` / `status_clientes:excluir` |
 | GET/POST/PUT/DELETE | `/api/usuarios` | `usuarios:ver` / `usuarios:gerenciar` |
 
 Busca e filtros em `GET /api/clientes`: `busca` (nome/CPF/CNPJ), `cidade` (nome do município),
-`estado` (UF), `segmento`, `status`, `pagina`, `limite`,
+`estado` (UF), `segmento_id`, `status_id`, `pagina`, `limite`,
 `ordenar_por` (nome, criado_em, cidade), `direcao`.
 
 ## Migrations

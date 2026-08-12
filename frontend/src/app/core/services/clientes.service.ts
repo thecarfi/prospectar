@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Cliente, ClienteDetalhe, ClienteFiltros, Paginacao } from '../models';
+import { Cliente, ClienteDetalhe, ClienteFiltros, EstatisticasCliente, Paginacao } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ClientesService {
@@ -13,7 +13,7 @@ export class ClientesService {
     if (filtros.cidade) params = params.set('cidade', filtros.cidade);
     if (filtros.estado) params = params.set('estado', filtros.estado);
     if (filtros.segmento_id) params = params.set('segmento_id', filtros.segmento_id);
-    if (filtros.status) params = params.set('status', filtros.status);
+    if (filtros.status_id) params = params.set('status_id', filtros.status_id);
     if (filtros.ordenar_por) params = params.set('ordenar_por', filtros.ordenar_por);
     if (filtros.direcao) params = params.set('direcao', filtros.direcao);
     params = params.set('pagina', filtros.pagina ?? 1);
@@ -21,18 +21,8 @@ export class ClientesService {
     return this.http.get<Paginacao<Cliente>>('/api/clientes', { params });
   }
 
-  estatisticas(): Observable<{
-    total: number;
-    ativos: number;
-    inativos: number;
-    prospects: number;
-  }> {
-    return this.http.get<{
-      total: number;
-      ativos: number;
-      inativos: number;
-      prospects: number;
-    }>('/api/clientes/estatisticas');
+  estatisticas(): Observable<EstatisticasCliente> {
+    return this.http.get<EstatisticasCliente>('/api/clientes/estatisticas');
   }
 
   detalhar(id: number): Observable<ClienteDetalhe> {

@@ -17,8 +17,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClientesService } from '../../core/services/clientes.service';
 import { SegmentosService } from '../../core/services/segmentos.service';
+import { StatusClientesService } from '../../core/services/status-clientes.service';
 import { LocalizacaoService } from '../../core/services/localizacao.service';
-import { Cliente, Segmento } from '../../core/models';
+import { Cliente, Segmento, StatusCliente } from '../../core/models';
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
@@ -85,11 +86,11 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Status</mat-label>
-            <mat-select formControlName="status">
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="ativo">Ativo</mat-option>
-              <mat-option value="inativo">Inativo</mat-option>
-              <mat-option value="prospect">Prospect</mat-option>
+            <mat-select formControlName="status_id">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option *ngFor="let status of statuses" [value]="status.id">
+                {{ status.nome }}
+              </mat-option>
             </mat-select>
           </mat-form-field>
           <div class="filter-actions">
@@ -129,8 +130,12 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
             <td mat-cell *matCellDef="let cliente">
-              <span class="status-pill" [class]="cliente.status">
-                {{ rotuloStatus(cliente.status) }}
+              <span
+                class="status-pill"
+                [style.background]="corFundo(cliente.status_cor)"
+                [style.color]="cliente.status_cor || '#424242'"
+              >
+                {{ cliente.status_nome || '—' }}
               </span>
             </td>
           </ng-container>
@@ -211,9 +216,6 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
       font-size: 12px;
       font-weight: 500;
     }
-    .status-pill.ativo { background: #e8f5e9; color: #2e7d32; }
-    .status-pill.inativo { background: #fbe9e7; color: #c62828; }
-    .status-pill.prospect { background: #fff3e0; color: #e65100; }
     .acoes-cell {
       text-align: right;
       white-space: nowrap;
@@ -228,6 +230,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
 export class ClienteListComponent implements OnInit {
   private readonly clientesService = inject(ClientesService);
   private readonly segmentosService = inject(SegmentosService);
+  private readonly statusClientesService = inject(StatusClientesService);
   private readonly localizacao = inject(LocalizacaoService);
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
@@ -239,11 +242,12 @@ export class ClienteListComponent implements OnInit {
     estado: [''],
     municipio_id: [null as number | null],
     segmento_id: [null as number | null],
-    status: [''],
+    status_id: [null as number | null],
   });
 
   clientes: Cliente[] = [];
   segmentos: Segmento[] = [];
+  statuses: StatusCliente[] = [];
   total = 0;
   pagina = 1;
   limite = 10;
@@ -255,6 +259,12 @@ export class ClienteListComponent implements OnInit {
     this.segmentosService.listar().subscribe({
       next: (lista) => {
         this.segmentos = lista;
+        this.cdr.markForCheck();
+      },
+    });
+    this.statusClientesService.listar().subscribe({
+      next: (lista) => {
+        this.statuses = lista;
         this.cdr.markForCheck();
       },
     });
@@ -278,7 +288,7 @@ export class ClienteListComponent implements OnInit {
 
   carregar(): void {
     this.carregando = true;
-    const { busca, estado, municipio_id, segmento_id, status } =
+    const { busca, estado, municipio_id, segmento_id, status_id } =
       this.filtros.getRawValue();
     const municipio = this.localizacao.obterMunicipio(municipio_id);
     this.clientesService
@@ -287,7 +297,7 @@ export class ClienteListComponent implements OnInit {
         cidade: municipio?.nome,
         estado: estado || undefined,
         segmento_id: segmento_id ?? undefined,
-        status: status || undefined,
+        status_id: status_id ?? undefined,
         pagina: this.pagina,
         limite: this.limite,
       })
@@ -330,12 +340,17 @@ export class ClienteListComponent implements OnInit {
     });
   }
 
-  rotuloStatus(status: string): string {
-    const mapa: Record<string, string> = {
-      ativo: 'Ativo',
-      inativo: 'Inativo',
-      prospect: 'Prospect',
-    };
-    return mapa[status] || status;
+  corFundo(cor?: string): string {
+    if (!cor) {
+      return '#eceff1';
+    }
+    const hex = cor.replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+      return '#eceff1';
+    }
+    return `rgba(${r}, ${g}, ${b}, 0.12)`;
   }
 }

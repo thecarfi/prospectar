@@ -138,7 +138,7 @@ export class LayoutComponent {
     { rotulo: 'Clientes', rota: '/clientes', icone: 'groups', permissoes: ['clientes:ver'] },
     { rotulo: 'Usuários', rota: '/usuarios', icone: 'manage_accounts', permissoes: ['usuarios:ver', 'usuarios:gerenciar'] },
     { rotulo: 'Permissões', rota: '/permissoes', icone: 'admin_panel_settings', permissoes: ['permissoes:ver'] },
-    { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissoes: ['segmentos:ver'] },
+    { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissoes: ['configuracao:ver'] },
   ];
 
   sair(): void {

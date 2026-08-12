@@ -54,7 +54,7 @@ export const routes: Routes = [
       {
         path: 'configuracoes',
         component: ConfiguracoesComponent,
-        canActivate: [permissionGuard('segmentos:ver')],
+        canActivate: [permissionGuard('configuracao:ver')],
       },
       { path: 'acesso-negado', component: AcessoNegadoComponent },
     ],

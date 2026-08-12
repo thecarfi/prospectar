@@ -12,6 +12,8 @@ const PERMISSOES = {
   interacoes: ['ver', 'criar', 'editar', 'excluir'],
   usuarios: ['ver', 'gerenciar'],
   segmentos: ['ver', 'criar', 'editar', 'excluir'],
+  status_clientes: ['ver', 'criar', 'editar', 'excluir'],
+  configuracao: ['ver'],
   permissoes: ['ver', 'gerenciar'],
 };
 
@@ -75,6 +77,8 @@ const PAPEIS = {
     'interacoes:ver', 'interacoes:criar', 'interacoes:editar',
     'usuarios:ver',
     'segmentos:ver',
+    'status_clientes:ver',
+    'configuracao:ver',
   ],
   visualizador: [
     'clientes:ver',
@@ -82,6 +86,8 @@ const PAPEIS = {
     'enderecos:ver',
     'interacoes:ver',
     'segmentos:ver',
+    'status_clientes:ver',
+    'configuracao:ver',
   ],
 };
 

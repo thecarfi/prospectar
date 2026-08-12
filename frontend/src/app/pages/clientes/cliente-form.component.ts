@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
+import { NgFor } from '@angular/common';
 import {
   AbstractControl,
   FormBuilder,
@@ -16,7 +17,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClientesService } from '../../core/services/clientes.service';
-import { Cliente, Segmento } from '../../core/models';
+import { StatusClientesService } from '../../core/services/status-clientes.service';
+import { Cliente, Segmento, StatusCliente } from '../../core/models';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 import { SeletorSegmentosComponent } from '../../shared/seletor-segmentos.component';
 
@@ -36,6 +38,7 @@ export function validarDocumento(
 @Component({
   selector: 'app-cliente-form',
   imports: [
+    NgFor,
     ReactiveFormsModule,
     RouterLink,
     MatCardModule,
@@ -76,11 +79,11 @@ export function validarDocumento(
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Status</mat-label>
-            <mat-select formControlName="status">
-              <mat-option value="ativo">Ativo</mat-option>
-              <mat-option value="inativo">Inativo</mat-option>
-              <mat-option value="prospect">Prospect</mat-option>
+            <mat-label>Status *</mat-label>
+            <mat-select formControlName="status_id">
+              <mat-option *ngFor="let status of statuses" [value]="status.id">
+                {{ status.nome }}
+              </mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -138,6 +141,7 @@ export function validarDocumento(
 export class ClienteFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly clientesService = inject(ClientesService);
+  private readonly statusClientesService = inject(StatusClientesService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -146,18 +150,29 @@ export class ClienteFormComponent implements OnInit {
   readonly formulario = this.fb.nonNullable.group({
     nome: ['', Validators.required],
     cpf_cnpj: ['', validarDocumento],
-    status: ['ativo' as string],
+    status_id: [null as number | null, Validators.required],
     segmentos: this.fb.control<Segmento[]>([]),
     estado: [''],
     municipio_id: [null as number | null],
     observacoes: [''],
   });
 
+  statuses: StatusCliente[] = [];
   editando = false;
   salvando = false;
   private clienteId: number | null = null;
 
   ngOnInit(): void {
+    this.statusClientesService.listar().subscribe({
+      next: (lista) => {
+        this.statuses = lista;
+        if (!this.editando && this.formulario.controls.status_id.value == null && lista.length) {
+          this.formulario.controls.status_id.setValue(lista[0].id);
+        }
+        this.cdr.markForCheck();
+      },
+    });
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.editando = true;
@@ -166,7 +181,7 @@ export class ClienteFormComponent implements OnInit {
         this.formulario.patchValue({
           nome: cliente.nome,
           cpf_cnpj: cliente.cpf_cnpj || '',
-          status: cliente.status,
+          status_id: cliente.status_id ?? null,
           segmentos: cliente.segmentos || [],
           estado: cliente.municipio_uf || '',
           municipio_id: cliente.municipio_id || null,

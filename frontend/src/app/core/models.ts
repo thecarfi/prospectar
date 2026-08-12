@@ -50,6 +50,13 @@ export interface Segmento {
   descricao?: string;
 }
 
+export interface StatusCliente {
+  id: number;
+  nome: string;
+  descricao?: string;
+  cor: string;
+}
+
 export interface Estado {
   id: number;
   sigla: string;
@@ -72,7 +79,9 @@ export interface Cliente {
   municipio_id?: number;
   municipio_nome?: string;
   municipio_uf?: string;
-  status: 'ativo' | 'inativo' | 'prospect';
+  status_id?: number;
+  status_nome?: string;
+  status_cor?: string;
   observacoes?: string;
   criado_por?: number;
   criado_em?: string;
@@ -90,11 +99,21 @@ export interface ClienteFiltros {
   cidade?: string;
   estado?: string;
   segmento_id?: number;
-  status?: string;
+  status_id?: number;
   pagina?: number;
   limite?: number;
   ordenar_por?: 'nome' | 'criado_em' | 'cidade';
   direcao?: 'asc' | 'desc';
+}
+
+export interface EstatisticasCliente {
+  total: number;
+  por_status: {
+    status_id: number;
+    status_nome: string;
+    status_cor: string;
+    total: number;
+  }[];
 }
 
 export interface Contato {

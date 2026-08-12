@@ -54,7 +54,11 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
           <ng-container *ngIf="cliente.municipio_nome">
             · {{ cliente.municipio_nome }}{{ cliente.municipio_uf ? ' - ' + cliente.municipio_uf : '' }}
           </ng-container>
-          · <span class="status-pill" [class]="cliente.status">{{ rotuloStatus(cliente.status) }}</span>
+          · <span
+              class="status-pill"
+              [style.background]="corFundo(cliente.status_cor)"
+              [style.color]="cliente.status_cor || '#424242'"
+            >{{ cliente.status_nome || '—' }}</span>
           <ng-container *ngIf="cliente.segmentos?.length">
             · Segmentos: {{ nomesSegmentos(cliente.segmentos!) }}
           </ng-container>
@@ -278,9 +282,6 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
       font-size: 12px;
       font-weight: 500;
     }
-    .status-pill.ativo { background: #e8f5e9; color: #2e7d32; }
-    .status-pill.inativo { background: #fbe9e7; color: #c62828; }
-    .status-pill.prospect { background: #fff3e0; color: #e65100; }
     .tipo-pill {
       padding: 4px 10px;
       border-radius: 12px;
@@ -466,13 +467,18 @@ export class ClienteDetailComponent implements OnInit {
     });
   }
 
-  rotuloStatus(status: string): string {
-    const mapa: Record<string, string> = {
-      ativo: 'Ativo',
-      inativo: 'Inativo',
-      prospect: 'Prospect',
-    };
-    return mapa[status] || status;
+  corFundo(cor?: string): string {
+    if (!cor) {
+      return '#eceff1';
+    }
+    const hex = cor.replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+      return '#eceff1';
+    }
+    return `rgba(${r}, ${g}, ${b}, 0.12)`;
   }
 
   nomesSegmentos(segmentos: Segmento[]): string {
