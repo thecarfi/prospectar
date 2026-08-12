@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,7 +9,6 @@ import { MatTableModule } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -17,7 +16,12 @@ import { UsuariosService } from '../../core/services/usuarios.service';
 import { PapeisService } from '../../core/services/papeis.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Papel, Usuario } from '../../core/models';
+import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import {
+  UsuarioFormDialogComponent,
+  UsuarioFormResult,
+} from './usuario-form-dialog.component';
 
 @Component({
   selector: 'app-usuario-management',
@@ -32,54 +36,59 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatSlideToggleModule,
     MatDialogModule,
     MatProgressBarModule,
+    PermissaoDirective,
   ],
   template: `
     <div class="header">
       <h1>Usuários</h1>
+      <button
+        mat-flat-button
+        color="primary"
+        appPermissao="usuarios:gerenciar"
+        (click)="abrirNovo()"
+      >
+        <mat-icon>add</mat-icon>
+        Novo usuário
+      </button>
     </div>
 
-    <mat-card class="form-card" *ngIf="podeGerenciar()">
-      <mat-card-title class="form-title">
-        {{ editandoId ? 'Editar usuário' : 'Novo usuário' }}
-      </mat-card-title>
+    <mat-card class="filter-card">
       <mat-card-content>
-        <form [formGroup]="formulario" (ngSubmit)="salvar()" class="form-grid">
+        <form [formGroup]="filtros" (ngSubmit)="buscar()" class="filters">
           <mat-form-field appearance="outline">
-            <mat-label>Nome *</mat-label>
+            <mat-label>Nome</mat-label>
             <input matInput formControlName="nome" />
+            <mat-icon matPrefix>search</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline">
-            <mat-label>E-mail *</mat-label>
-            <input matInput formControlName="email" type="email" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>{{ editandoId ? 'Nova senha (opcional)' : 'Senha *' }}</mat-label>
-            <input matInput formControlName="senha" type="password" />
+            <mat-label>E-mail</mat-label>
+            <input matInput formControlName="email" />
+            <mat-icon matPrefix>search</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Papel</mat-label>
             <mat-select formControlName="papel">
+              <mat-option value="">Todos</mat-option>
               <mat-option *ngFor="let p of papeis" [value]="p.nome">
                 {{ rotuloPapel(p.nome) }}
               </mat-option>
             </mat-select>
           </mat-form-field>
-          <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-          <div class="actions">
-            <button
-              mat-flat-button
-              color="primary"
-              type="submit"
-              [disabled]="formulario.invalid || salvando"
-            >
-              {{ salvando ? 'Salvando...' : 'Salvar' }}
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="ativo">
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="true">Ativo</mat-option>
+              <mat-option value="false">Inativo</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <div class="filter-actions">
+            <button mat-flat-button color="primary" type="submit">
+              Filtrar
             </button>
-            <button mat-button type="button" *ngIf="editandoId" (click)="cancelarEdicao()">
-              Cancelar edição
-            </button>
+            <button mat-button type="button" (click)="limpar()">Limpar</button>
           </div>
         </form>
       </mat-card-content>
@@ -129,35 +138,37 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
           <tr mat-row *matRowDef="let row; columns: colunas"></tr>
         </table>
         <p *ngIf="!carregando && usuarios.length === 0" class="empty">
-          Nenhum usuário cadastrado.
+          Nenhum usuário encontrado.
         </p>
       </mat-card-content>
     </mat-card>
   `,
   styles: `
     .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 16px;
     }
     .header h1 {
       margin: 0;
     }
-    .form-card {
+    .filter-card {
       margin-bottom: 16px;
     }
-    .form-title {
-      padding: 16px 16px 0;
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: baseline;
     }
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 0 16px;
-      align-items: start;
+    .filters mat-form-field {
+      flex: 1;
+      min-width: 180px;
     }
-    .actions {
+    .filter-actions {
       display: flex;
       gap: 8px;
-      padding-bottom: 16px;
-      align-items: center;
     }
     .acoes-cell {
       text-align: right;
@@ -188,19 +199,16 @@ export class UsuarioManagementComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  readonly formulario = this.fb.nonNullable.group({
-    nome: ['', Validators.required],
-    email: ['', [Validators.required, Validators.email]],
-    senha: ['', Validators.required],
-    papel: ['visualizador' as string],
-    ativo: [true],
+  readonly filtros = this.fb.nonNullable.group({
+    nome: [''],
+    email: [''],
+    papel: [''],
+    ativo: [''],
   });
 
   usuarios: Usuario[] = [];
   papeis: Papel[] = [];
   carregando = false;
-  salvando = false;
-  editandoId: number | null = null;
   readonly colunas = ['nome', 'email', 'papel', 'ativo', 'acoes'];
 
   ngOnInit(): void {
@@ -229,82 +237,79 @@ export class UsuarioManagementComponent implements OnInit {
     });
   }
 
-  carregar(): void {
-    this.carregando = true;
-    this.usuariosService.listar().subscribe({
-      next: (usuarios) => {
-        this.usuarios = usuarios;
-        this.carregando = false;
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.carregando = false;
-        this.cdr.markForCheck();
-      },
-    });
+  buscar(): void {
+    this.carregar();
   }
 
-  salvar(): void {
-    if (this.formulario.invalid || this.salvando) return;
-    this.salvando = true;
-    const valor = this.formulario.getRawValue();
+  limpar(): void {
+    this.filtros.reset();
+    this.carregar();
+  }
 
-    if (this.editandoId) {
-      const { senha, ...dados } = valor;
-      this.usuariosService
-        .atualizar(this.editandoId, {
-          ...dados,
-          papel: dados.papel as Usuario['papel'],
-          senha: senha || undefined,
-        })
-        .subscribe({
-          next: () => {
-            this.salvando = false;
-            this.cdr.markForCheck();
-            this.snackBar.open('Usuário atualizado.', 'Fechar', { duration: 3000 });
-            this.cancelarEdicao();
-            this.carregar();
-          },
-          error: () => {
-            this.salvando = false;
-            this.cdr.markForCheck();
-          },
-        });
-    } else {
-      this.usuariosService
-        .criar({ ...valor, papel: valor.papel as Usuario['papel'] })
-        .subscribe({
-        next: () => {
-          this.salvando = false;
+  carregar(): void {
+    this.carregando = true;
+    const { nome, email, papel, ativo } = this.filtros.getRawValue();
+    this.usuariosService
+      .listar({
+        nome: nome || undefined,
+        email: email || undefined,
+        papel: papel || undefined,
+        ativo: ativo === '' ? undefined : ativo === 'true',
+      })
+      .subscribe({
+        next: (usuarios) => {
+          this.usuarios = usuarios;
+          this.carregando = false;
           this.cdr.markForCheck();
-          this.snackBar.open('Usuário criado.', 'Fechar', { duration: 3000 });
-          this.formulario.reset({ papel: 'visualizador', ativo: true });
-          this.carregar();
         },
         error: () => {
-          this.salvando = false;
+          this.carregando = false;
           this.cdr.markForCheck();
         },
       });
-    }
+  }
+
+  abrirNovo(): void {
+    const ref = this.dialog.open(UsuarioFormDialogComponent, {
+      width: '480px',
+      data: {},
+    });
+
+    ref.afterClosed().subscribe((valor: UsuarioFormResult | undefined) => {
+      if (!valor) {
+        return;
+      }
+      if (!valor.senha) {
+        return;
+      }
+      this.usuariosService.criar({ ...valor, senha: valor.senha }).subscribe({
+        next: () => {
+          this.snackBar.open('Usuário criado.', 'Fechar', { duration: 3000 });
+          this.carregar();
+        },
+        error: () => this.cdr.markForCheck(),
+      });
+    });
   }
 
   editar(usuario: Usuario): void {
-    this.editandoId = usuario.id;
-    this.formulario.patchValue({
-      nome: usuario.nome,
-      email: usuario.email,
-      papel: usuario.papel,
-      ativo: usuario.ativo,
+    const ref = this.dialog.open(UsuarioFormDialogComponent, {
+      width: '480px',
+      data: { usuario },
     });
-    this.formulario.controls.senha.clearValidators();
-    this.formulario.controls.senha.reset();
-  }
 
-  cancelarEdicao(): void {
-    this.editandoId = null;
-    this.formulario.reset({ papel: 'visualizador', ativo: true });
-    this.formulario.controls.senha.setValidators(Validators.required);
+    ref.afterClosed().subscribe((valor: UsuarioFormResult | undefined) => {
+      if (!valor) {
+        return;
+      }
+      this.usuariosService.atualizar(usuario.id, valor).subscribe({
+        next: () => {
+          this.snackBar.open('Usuário atualizado.', 'Fechar', { duration: 3000 });
+          this.carregar();
+        },
+        error: () => this.cdr.markForCheck(),
+      });
+    });
   }
 
   excluir(usuario: Usuario): void {

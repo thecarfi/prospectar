@@ -6,8 +6,37 @@ const CAMPOS_SAIDA = 'id, nome, email, papel, ativo, criado_em, atualizado_em';
 
 async function listar(req, res, next) {
   try {
+    const { nome, email, papel, ativo } = req.query;
+
+    const condicoes = [];
+    const params = [];
+
+    if (nome) {
+      params.push(`%${nome}%`);
+      condicoes.push(`u.nome ILIKE $${params.length}`);
+    }
+    if (email) {
+      params.push(`%${email}%`);
+      condicoes.push(`u.email ILIKE $${params.length}`);
+    }
+    if (papel) {
+      params.push(papel);
+      condicoes.push(`u.papel = $${params.length}`);
+    }
+    if (ativo === 'true' || ativo === '1') {
+      condicoes.push('u.ativo = TRUE');
+    } else if (ativo === 'false' || ativo === '0') {
+      condicoes.push('u.ativo = FALSE');
+    }
+
+    const whereSql = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
+
     const { rows } = await pool.query(
-      `SELECT ${CAMPOS_SAIDA} FROM usuarios ORDER BY nome`
+      `SELECT ${CAMPOS_SAIDA}
+         FROM usuarios u
+        ${whereSql}
+        ORDER BY u.nome`,
+      params
     );
     res.json(rows);
   } catch (err) {

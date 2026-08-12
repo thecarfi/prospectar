@@ -18,6 +18,13 @@ export interface Papel {
   criado_em?: string;
 }
 
+export interface UsuarioFiltros {
+  nome?: string;
+  email?: string;
+  papel?: string;
+  ativo?: boolean;
+}
+
 export interface Permissao {
   id: number;
   modulo: string;
