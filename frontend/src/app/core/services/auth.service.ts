@@ -57,6 +57,17 @@ export class AuthService {
     return !!usuario.permissoes?.includes(permissao);
   }
 
+  temAlgumaPermissao(...permissoes: string[]): boolean {
+    const usuario = this.usuarioSignal();
+    if (!usuario) {
+      return false;
+    }
+    if (usuario.papel === 'admin') {
+      return true;
+    }
+    return permissoes.some((p) => usuario.permissoes?.includes(p));
+  }
+
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USUARIO_KEY);

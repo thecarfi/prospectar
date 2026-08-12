@@ -11,8 +11,14 @@ const PERMISSOES = {
   enderecos: ['ver', 'criar', 'editar', 'excluir'],
   interacoes: ['ver', 'criar', 'editar', 'excluir'],
   usuarios: ['ver', 'gerenciar'],
-  localizacao: ['ver'],
   segmentos: ['ver', 'criar', 'editar', 'excluir'],
+  permissoes: ['ver', 'gerenciar'],
+};
+
+const PAPEIS_DESCRICOES = {
+  admin: 'Acesso total ao sistema',
+  operador: 'Operação de clientes, contatos, endereços e interações',
+  visualizador: 'Somente leitura',
 };
 
 const SEGMENTOS_PADRAO = [
@@ -68,7 +74,6 @@ const PAPEIS = {
     'enderecos:ver', 'enderecos:criar', 'enderecos:editar',
     'interacoes:ver', 'interacoes:criar', 'interacoes:editar',
     'usuarios:ver',
-    'localizacao:ver',
     'segmentos:ver',
   ],
   visualizador: [
@@ -76,7 +81,6 @@ const PAPEIS = {
     'contatos:ver',
     'enderecos:ver',
     'interacoes:ver',
-    'localizacao:ver',
     'segmentos:ver',
   ],
 };
@@ -99,6 +103,14 @@ async function seed() {
         );
         mapaPermissaoId[`${modulo}:${acao}`] = rows[0].id;
       }
+    }
+
+    for (const [nome, descricao] of Object.entries(PAPEIS_DESCRICOES)) {
+      await client.query(
+        `INSERT INTO papeis (nome, descricao) VALUES ($1, $2)
+         ON CONFLICT (nome) DO NOTHING`,
+        [nome, descricao]
+      );
     }
 
     for (const [papel, permissaoLista] of Object.entries(PAPEIS)) {

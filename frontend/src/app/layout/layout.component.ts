@@ -13,8 +13,7 @@ interface NavItem {
   rotulo: string;
   rota: string;
   icone: string;
-  permissao: string;
-  somenteAdmin?: boolean;
+  permissoes: string[];
 }
 
 @Component({
@@ -45,7 +44,7 @@ interface NavItem {
               mat-list-item
               routerLinkActive="active-link"
               [routerLink]="item.rota"
-              *ngIf="item.somenteAdmin ? auth.usuario()?.papel === 'admin' : auth.temPermissao(item.permissao)"
+              *ngIf="auth.temAlgumaPermissao(...item.permissoes)"
             >
               <mat-icon matListItemIcon>{{ item.icone }}</mat-icon>
               <span matListItemTitle>{{ item.rotulo }}</span>
@@ -135,10 +134,11 @@ export class LayoutComponent {
   private readonly router = inject(Router);
 
   readonly itensNav: NavItem[] = [
-    { rotulo: 'Dashboard', rota: '/dashboard', icone: 'dashboard', permissao: 'clientes:ver' },
-    { rotulo: 'Clientes', rota: '/clientes', icone: 'groups', permissao: 'clientes:ver' },
-    { rotulo: 'Usuários', rota: '/usuarios', icone: 'manage_accounts', permissao: 'usuarios:gerenciar', somenteAdmin: true },
-    { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissao: 'segmentos:ver' },
+    { rotulo: 'Dashboard', rota: '/dashboard', icone: 'dashboard', permissoes: ['clientes:ver'] },
+    { rotulo: 'Clientes', rota: '/clientes', icone: 'groups', permissoes: ['clientes:ver'] },
+    { rotulo: 'Usuários', rota: '/usuarios', icone: 'manage_accounts', permissoes: ['usuarios:ver', 'usuarios:gerenciar'] },
+    { rotulo: 'Permissões', rota: '/permissoes', icone: 'admin_panel_settings', permissoes: ['permissoes:ver'] },
+    { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissoes: ['segmentos:ver'] },
   ];
 
   sair(): void {

@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
-import { permissionGuard } from './core/guards/permission.guard';
+import { permissionGuard, permissionAnyGuard } from './core/guards/permission.guard';
 import { LayoutComponent } from './layout/layout.component';
 import { LoginComponent } from './pages/login/login.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
@@ -10,6 +10,7 @@ import { ClienteDetailComponent } from './pages/clientes/cliente-detail.componen
 import { UsuarioManagementComponent } from './pages/usuarios/usuario-management.component';
 import { AcessoNegadoComponent } from './pages/acesso-negado/acesso-negado.component';
 import { ConfiguracoesComponent } from './pages/configuracoes/configuracoes.component';
+import { PermissoesComponent } from './pages/permissoes/permissoes.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -43,7 +44,12 @@ export const routes: Routes = [
       {
         path: 'usuarios',
         component: UsuarioManagementComponent,
-        canActivate: [permissionGuard('usuarios:gerenciar')],
+        canActivate: [permissionAnyGuard(['usuarios:ver', 'usuarios:gerenciar'])],
+      },
+      {
+        path: 'permissoes',
+        component: PermissoesComponent,
+        canActivate: [permissionGuard('permissoes:ver')],
       },
       {
         path: 'configuracoes',

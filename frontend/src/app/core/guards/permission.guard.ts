@@ -14,3 +14,16 @@ export function permissionGuard(permissao: string): CanActivateFn {
     return router.createUrlTree(['/acesso-negado']);
   };
 }
+
+export function permissionAnyGuard(permissoes: string[]): CanActivateFn {
+  return () => {
+    const auth = inject(AuthService);
+    const router = inject(Router);
+
+    if (auth.temAlgumaPermissao(...permissoes)) {
+      return true;
+    }
+
+    return router.createUrlTree(['/acesso-negado']);
+  };
+}

@@ -116,8 +116,8 @@ e pela diretiva `appPermissao`.
 | GET/POST | `/api/clientes/:id/contatos` | `contatos:ver` / `contatos:criar` |
 | GET/POST | `/api/clientes/:id/enderecos` | `enderecos:ver` / `enderecos:criar` |
 | GET/POST | `/api/clientes/:id/interacoes` | `interacoes:ver` / `interacoes:criar` |
-| GET | `/api/localizacao/estados` | `localizacao:ver` |
-| GET | `/api/localizacao/municipios` | `localizacao:ver` |
+| GET | `/api/localizacao/estados` | autenticado (qualquer papel) |
+| GET | `/api/localizacao/municipios` | autenticado (qualquer papel) |
 | GET/POST/PUT/DELETE | `/api/usuarios` | `usuarios:ver` / `usuarios:gerenciar` |
 
 Busca e filtros em `GET /api/clientes`: `busca` (nome/CPF/CNPJ), `cidade` (nome do município),

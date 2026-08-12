@@ -2,11 +2,27 @@ export interface Usuario {
   id: number;
   nome: string;
   email: string;
-  papel: 'admin' | 'operador' | 'visualizador';
+  papel: string;
   ativo: boolean;
   permissoes?: string[];
   criado_em?: string;
   atualizado_em?: string;
+}
+
+export interface Papel {
+  id: number;
+  nome: string;
+  descricao?: string;
+  permissoes: string[];
+  usuarios_count?: number;
+  criado_em?: string;
+}
+
+export interface Permissao {
+  id: number;
+  modulo: string;
+  acao: string;
+  permissao: string;
 }
 
 export interface LoginResponse {

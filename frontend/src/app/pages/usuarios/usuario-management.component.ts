@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
-import { NgIf } from '@angular/common';
+import { NgFor, NgIf } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,13 +14,16 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { UsuariosService } from '../../core/services/usuarios.service';
-import { Usuario } from '../../core/models';
+import { PapeisService } from '../../core/services/papeis.service';
+import { AuthService } from '../../core/services/auth.service';
+import { Papel, Usuario } from '../../core/models';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 
 @Component({
   selector: 'app-usuario-management',
   imports: [
     NgIf,
+    NgFor,
     ReactiveFormsModule,
     MatCardModule,
     MatIconModule,
@@ -38,7 +41,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
       <h1>Usuários</h1>
     </div>
 
-    <mat-card class="form-card">
+    <mat-card class="form-card" *ngIf="podeGerenciar()">
       <mat-card-title class="form-title">
         {{ editandoId ? 'Editar usuário' : 'Novo usuário' }}
       </mat-card-title>
@@ -59,9 +62,9 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
           <mat-form-field appearance="outline">
             <mat-label>Papel</mat-label>
             <mat-select formControlName="papel">
-              <mat-option value="admin">Admin</mat-option>
-              <mat-option value="operador">Operador</mat-option>
-              <mat-option value="visualizador">Visualizador</mat-option>
+              <mat-option *ngFor="let p of papeis" [value]="p.nome">
+                {{ rotuloPapel(p.nome) }}
+              </mat-option>
             </mat-select>
           </mat-form-field>
           <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
@@ -111,12 +114,14 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
           <ng-container matColumnDef="acoes">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let usuario" class="acoes-cell">
-              <button mat-icon-button (click)="editar(usuario)">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button color="warn" (click)="excluir(usuario)">
-                <mat-icon>delete</mat-icon>
-              </button>
+              <span *ngIf="podeGerenciar()">
+                <button mat-icon-button (click)="editar(usuario)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" (click)="excluir(usuario)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </span>
             </td>
           </ng-container>
 
@@ -177,6 +182,8 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 export class UsuarioManagementComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly usuariosService = inject(UsuariosService);
+  private readonly papeisService = inject(PapeisService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -190,6 +197,7 @@ export class UsuarioManagementComponent implements OnInit {
   });
 
   usuarios: Usuario[] = [];
+  papeis: Papel[] = [];
   carregando = false;
   salvando = false;
   editandoId: number | null = null;
@@ -197,6 +205,28 @@ export class UsuarioManagementComponent implements OnInit {
 
   ngOnInit(): void {
     this.carregar();
+    this.carregarPapeis();
+  }
+
+  podeGerenciar(): boolean {
+    return this.auth.temPermissao('usuarios:gerenciar');
+  }
+
+  carregarPapeis(): void {
+    this.papeisService.listar().subscribe({
+      next: (papeis) => {
+        this.papeis = papeis;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.papeis = [
+          { id: 0, nome: 'admin', permissoes: [] },
+          { id: 0, nome: 'operador', permissoes: [] },
+          { id: 0, nome: 'visualizador', permissoes: [] },
+        ];
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   carregar(): void {
