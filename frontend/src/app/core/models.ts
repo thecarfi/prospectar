@@ -92,6 +92,7 @@ export interface Cliente {
 export interface ClienteDetalhe extends Cliente {
   contatos: Contato[];
   enderecos: Endereco[];
+  endereco_principal?: Endereco | null;
   interacoes: Interacao[];
 }
 

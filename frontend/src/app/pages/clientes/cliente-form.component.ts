@@ -4,6 +4,7 @@ import { NgFor } from '@angular/common';
 import {
   AbstractControl,
   FormBuilder,
+  FormGroup,
   ReactiveFormsModule,
   ValidationErrors,
   Validators,
@@ -33,6 +34,27 @@ export function validarDocumento(
   return digitos.length === 11 || digitos.length === 14
     ? null
     : { documentoInvalido: true };
+}
+
+export function validarEndereco(
+  grupo: AbstractControl
+): ValidationErrors | null {
+  const endereco = grupo as FormGroup;
+  const logradouro = (endereco.get('logradouro')?.value ?? '').toString().trim();
+  const municipioId = endereco.get('municipio_id')?.value;
+  const temLogradouro = !!logradouro;
+  const temMunicipio = municipioId != null && municipioId !== '';
+  if (!temLogradouro && !temMunicipio) {
+    return null;
+  }
+  const erros: { logradouroObrigatorio?: boolean; municipioObrigatorio?: boolean } = {};
+  if (!temLogradouro) {
+    erros.logradouroObrigatorio = true;
+  }
+  if (!temMunicipio) {
+    erros.municipioObrigatorio = true;
+  }
+  return erros;
 }
 
 @Component({
@@ -92,10 +114,36 @@ export function validarDocumento(
             [control]="formulario.controls.segmentos"
           ></app-seletor-segmentos>
 
-          <app-seletor-municipio
-            [estadoControl]="formulario.controls.estado"
-            [municipioControl]="formulario.controls.municipio_id"
-          ></app-seletor-municipio>
+          <div [formGroup]="formulario.controls.endereco" class="full endereco-section">
+            <div class="section-title">Endereço</div>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Logradouro</mat-label>
+              <input matInput formControlName="logradouro" placeholder="Ex.: Rua das Flores" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Número</mat-label>
+              <input matInput formControlName="numero" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>CEP</mat-label>
+              <input matInput formControlName="cep" placeholder="00000-000" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Complemento</mat-label>
+              <input matInput formControlName="complemento" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Bairro</mat-label>
+              <input matInput formControlName="bairro" />
+            </mat-form-field>
+            <app-seletor-municipio
+              [estadoControl]="formulario.controls.endereco.controls.estado"
+              [municipioControl]="formulario.controls.endereco.controls.municipio_id"
+            ></app-seletor-municipio>
+            @if (formulario.controls.endereco.invalid && formulario.controls.endereco.touched) {
+              <div class="endereco-error">Informe o logradouro e o município do endereço.</div>
+            }
+          </div>
 
           <mat-form-field appearance="outline" class="full">
             <mat-label>Observações</mat-label>
@@ -131,6 +179,22 @@ export function validarDocumento(
     .full {
       grid-column: 1 / -1;
     }
+    .section-title {
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.6);
+      margin: 8px 0 4px;
+    }
+    .endereco-section {
+      border-top: 1px solid rgba(0, 0, 0, 0.12);
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+    .endereco-error {
+      grid-column: 1 / -1;
+      color: #f44336;
+      font-size: 12px;
+      padding-bottom: 8px;
+    }
     .actions {
       display: flex;
       gap: 8px;
@@ -152,9 +216,19 @@ export class ClienteFormComponent implements OnInit {
     cpf_cnpj: ['', validarDocumento],
     status_id: [null as number | null, Validators.required],
     segmentos: this.fb.control<Segmento[]>([]),
-    estado: [''],
-    municipio_id: [null as number | null],
     observacoes: [''],
+    endereco: this.fb.nonNullable.group(
+      {
+        logradouro: [''],
+        numero: [''],
+        complemento: [''],
+        bairro: [''],
+        estado: [''],
+        municipio_id: [null as number | null],
+        cep: [''],
+      },
+      { validators: validarEndereco }
+    ),
   });
 
   statuses: StatusCliente[] = [];
@@ -178,14 +252,22 @@ export class ClienteFormComponent implements OnInit {
       this.editando = true;
       this.clienteId = Number(id);
       this.clientesService.detalhar(this.clienteId).subscribe((cliente) => {
+        const principal = cliente.endereco_principal;
         this.formulario.patchValue({
           nome: cliente.nome,
           cpf_cnpj: cliente.cpf_cnpj || '',
           status_id: cliente.status_id ?? null,
           segmentos: cliente.segmentos || [],
-          estado: cliente.municipio_uf || '',
-          municipio_id: cliente.municipio_id || null,
           observacoes: cliente.observacoes || '',
+          endereco: {
+            logradouro: principal?.logradouro || '',
+            numero: principal?.numero || '',
+            complemento: principal?.complemento || '',
+            bairro: principal?.bairro || '',
+            estado: principal?.municipio_uf || '',
+            municipio_id: principal?.municipio_id || null,
+            cep: principal?.cep || '',
+          },
         });
         this.cdr.markForCheck();
       });
@@ -227,7 +309,7 @@ export class ClienteFormComponent implements OnInit {
         this.formulario.markAllAsTouched();
         this.cdr.markForCheck();
         this.snackBar.open(
-          'Verifique o campo CPF/CNPJ.',
+          'Verifique os campos obrigatórios.',
           'Fechar',
           { duration: 4000 }
         );
@@ -236,12 +318,18 @@ export class ClienteFormComponent implements OnInit {
     }
     this.salvando = true;
     const valor = this.formulario.getRawValue();
+    const endereco = valor.endereco;
     const payload = {
       ...valor,
       cpf_cnpj: valor.cpf_cnpj || null,
       segmento_ids: (valor.segmentos ?? []).map((s) => s.id),
-      municipio_id: valor.municipio_id,
       observacoes: valor.observacoes || null,
+      logradouro: endereco.logradouro || null,
+      numero: endereco.numero || null,
+      complemento: endereco.complemento || null,
+      bairro: endereco.bairro || null,
+      cep: endereco.cep || null,
+      municipio_id: endereco.municipio_id,
     };
 
     const operacao = this.editando && this.clienteId

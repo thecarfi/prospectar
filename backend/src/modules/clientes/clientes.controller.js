@@ -1,6 +1,17 @@
 const { pool } = require('../../config/db');
 const ApiError = require('../../utils/api-error');
 
+const ENDERECO_PRINCIPAL_LATERAL = `
+     LEFT JOIN LATERAL (
+          SELECT e.municipio_id
+            FROM enderecos e
+           WHERE e.cliente_id = c.id AND e.principal = TRUE
+           ORDER BY e.criado_em ASC, e.id ASC
+           LIMIT 1
+     ) ce ON TRUE
+     LEFT JOIN municipios m ON m.id = ce.municipio_id
+     LEFT JOIN estados est ON est.id = m.estado_id`;
+
 async function validarMunicipio(municipioId) {
   const { rows } = await pool.query(
     'SELECT id FROM municipios WHERE id = $1',
@@ -19,6 +30,28 @@ async function validarStatus(statusId) {
   if (!rows[0]) {
     throw new ApiError(400, 'Status inválido');
   }
+}
+
+function enderecoPreenchido(logradouro, municipioId) {
+  return !!(logradouro && String(logradouro).trim()) || municipioId != null;
+}
+
+async function validarEndereco(logradouro, municipioId) {
+  const temLogradouro = !!(logradouro && String(logradouro).trim());
+  const temMunicipio = municipioId != null;
+  if (!temLogradouro) {
+    throw new ApiError(
+      400,
+      'Logradouro obrigatório quando o endereço é informado'
+    );
+  }
+  if (!temMunicipio) {
+    throw new ApiError(
+      400,
+      'Município obrigatório quando o endereço é informado'
+    );
+  }
+  await validarMunicipio(municipioId);
 }
 
 async function listar(req, res, next) {
@@ -55,7 +88,7 @@ async function listar(req, res, next) {
     }
     if (estado) {
       params.push(estado);
-      condicoes.push(`e.sigla = $${params.length}`);
+      condicoes.push(`est.sigla = $${params.length}`);
     }
     if (segmento_id) {
       const id = parseInt(segmento_id, 10);
@@ -81,8 +114,7 @@ async function listar(req, res, next) {
     const offset = (paginaNum - 1) * limiteNum;
 
     const fromSql = `FROM clientes c
-         LEFT JOIN municipios m ON m.id = c.municipio_id
-         LEFT JOIN estados e ON e.id = m.estado_id
+         ${ENDERECO_PRINCIPAL_LATERAL}
          LEFT JOIN status_clientes st ON st.id = c.status_id`;
 
     const { rows: totalRows } = await pool.query(
@@ -93,7 +125,7 @@ async function listar(req, res, next) {
     const { rows } = await pool.query(
       `SELECT c.id, c.nome, c.cpf_cnpj,
               c.status_id, st.nome AS status_nome, st.descricao AS status_descricao, st.cor AS status_cor,
-              c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
+              ce.municipio_id, m.nome AS municipio_nome, est.sigla AS municipio_uf,
               c.observacoes, c.criado_por, c.criado_em, c.atualizado_em,
               COALESCE((SELECT string_agg(s.nome, ', ' ORDER BY s.nome)
                           FROM cliente_segmentos cs
@@ -145,11 +177,10 @@ async function detalhar(req, res, next) {
     const { rows: clientes } = await pool.query(
       `SELECT c.id, c.nome, c.cpf_cnpj,
               c.status_id, st.nome AS status_nome, st.descricao AS status_descricao, st.cor AS status_cor,
-              c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
+              ce.municipio_id, m.nome AS municipio_nome, est.sigla AS municipio_uf,
               c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
          FROM clientes c
-         LEFT JOIN municipios m ON m.id = c.municipio_id
-         LEFT JOIN estados e ON e.id = m.estado_id
+         ${ENDERECO_PRINCIPAL_LATERAL}
          LEFT JOIN status_clientes st ON st.id = c.status_id
         WHERE c.id = $1`,
       [id]
@@ -172,7 +203,19 @@ async function detalhar(req, res, next) {
          FROM enderecos e
          LEFT JOIN municipios m ON m.id = e.municipio_id
          LEFT JOIN estados es ON es.id = m.estado_id
-        WHERE e.cliente_id = $1 ORDER BY e.principal DESC, e.id`,
+        WHERE e.cliente_id = $1 ORDER BY e.principal DESC, e.criado_em ASC, e.id`,
+      [id]
+    );
+    const { rows: principalRows } = await pool.query(
+      `SELECT e.id, e.logradouro, e.numero, e.complemento, e.bairro,
+              e.municipio_id, m.nome AS municipio_nome, es.sigla AS municipio_uf,
+              e.cep, e.principal
+         FROM enderecos e
+         LEFT JOIN municipios m ON m.id = e.municipio_id
+         LEFT JOIN estados es ON es.id = m.estado_id
+        WHERE e.cliente_id = $1 AND e.principal = TRUE
+        ORDER BY e.criado_em ASC, e.id ASC
+        LIMIT 1`,
       [id]
     );
     const { rows: interacoes } = await pool.query(
@@ -193,7 +236,14 @@ async function detalhar(req, res, next) {
       [id]
     );
 
-    res.json({ ...cliente, contatos, enderecos, interacoes, segmentos });
+    res.json({
+      ...cliente,
+      contatos,
+      enderecos,
+      endereco_principal: principalRows[0] || null,
+      interacoes,
+      segmentos,
+    });
   } catch (err) {
     next(err);
   }
@@ -205,13 +255,19 @@ async function criar(req, res, next) {
       nome,
       cpf_cnpj,
       segmento_ids,
-      municipio_id,
       status_id,
       observacoes,
+      logradouro,
+      numero,
+      complemento,
+      bairro,
+      cep,
+      municipio_id,
     } = req.body;
 
-    if (municipio_id != null) {
-      await validarMunicipio(municipio_id);
+    const enderecoInformado = enderecoPreenchido(logradouro, municipio_id);
+    if (enderecoInformado) {
+      await validarEndereco(logradouro, municipio_id);
     }
 
     let statusFinal = status_id;
@@ -227,24 +283,51 @@ async function criar(req, res, next) {
       await validarStatus(statusFinal);
     }
 
-    const { rows } = await pool.query(
-      `INSERT INTO clientes (nome, cpf_cnpj, municipio_id, status_id, observacoes, criado_por)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, nome, cpf_cnpj, municipio_id, status_id,
-                 observacoes, criado_por, criado_em, atualizado_em`,
-      [nome, cpf_cnpj || null, municipio_id ?? null, statusFinal, observacoes || null, req.user.id]
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    if (Array.isArray(segmento_ids) && segmento_ids.length > 0) {
-      await pool.query(
-        `INSERT INTO cliente_segmentos (cliente_id, segmento_id)
-         SELECT $1, unnest($2::int[])
-         ON CONFLICT DO NOTHING`,
-        [rows[0].id, segmento_ids]
+      const { rows } = await client.query(
+        `INSERT INTO clientes (nome, cpf_cnpj, status_id, observacoes, criado_por)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, nome, cpf_cnpj, status_id,
+                   observacoes, criado_por, criado_em, atualizado_em`,
+        [nome, cpf_cnpj || null, statusFinal, observacoes || null, req.user.id]
       );
-    }
 
-    res.status(201).json(rows[0]);
+      if (Array.isArray(segmento_ids) && segmento_ids.length > 0) {
+        await client.query(
+          `INSERT INTO cliente_segmentos (cliente_id, segmento_id)
+           SELECT $1, unnest($2::int[])
+           ON CONFLICT DO NOTHING`,
+          [rows[0].id, segmento_ids]
+        );
+      }
+
+      if (enderecoInformado) {
+        await client.query(
+          `INSERT INTO enderecos (cliente_id, logradouro, numero, complemento, bairro, municipio_id, cep, principal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)`,
+          [
+            rows[0].id,
+            String(logradouro).trim(),
+            numero || null,
+            complemento || null,
+            bairro || null,
+            municipio_id,
+            cep || null,
+          ]
+        );
+      }
+
+      await client.query('COMMIT');
+      res.status(201).json(rows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     if (err.code === '23505') {
       return next(new ApiError(409, 'CPF/CNPJ já cadastrado'));
@@ -259,17 +342,27 @@ async function atualizar(req, res, next) {
     nome,
     cpf_cnpj,
     segmento_ids,
-    municipio_id,
     status_id,
     observacoes,
+    logradouro,
+    numero,
+    complemento,
+    bairro,
+    cep,
+    municipio_id,
   } = req.body;
 
   try {
-    if (municipio_id != null) {
-      await validarMunicipio(municipio_id);
-    }
     if (status_id != null) {
       await validarStatus(status_id);
+    }
+
+    const secaoEndereco =
+      'logradouro' in req.body || 'municipio_id' in req.body;
+    const enderecoInformado =
+      secaoEndereco && enderecoPreenchido(logradouro, municipio_id);
+    if (enderecoInformado) {
+      await validarEndereco(logradouro, municipio_id);
     }
 
     const client = await pool.connect();
@@ -288,14 +381,13 @@ async function atualizar(req, res, next) {
         `UPDATE clientes
             SET nome = COALESCE($1, nome),
                 cpf_cnpj = COALESCE($2, cpf_cnpj),
-                municipio_id = COALESCE($3, municipio_id),
-                status_id = COALESCE($4, status_id),
-                observacoes = COALESCE($5, observacoes),
+                status_id = COALESCE($3, status_id),
+                observacoes = COALESCE($4, observacoes),
                 atualizado_em = NOW()
-          WHERE id = $6
-          RETURNING id, nome, cpf_cnpj, municipio_id, status_id,
+          WHERE id = $5
+          RETURNING id, nome, cpf_cnpj, status_id,
                     observacoes, criado_por, criado_em, atualizado_em`,
-        [nome ?? null, cpf_cnpj ?? null, municipio_id ?? null, status_id ?? null, observacoes ?? null, id]
+        [nome ?? null, cpf_cnpj ?? null, status_id ?? null, observacoes ?? null, id]
       );
 
       if ('segmento_ids' in req.body) {
@@ -312,6 +404,67 @@ async function atualizar(req, res, next) {
             [id, lista]
           );
         }
+      }
+
+      if (enderecoInformado) {
+        const { rows: principalRows } = await client.query(
+          `SELECT e.id
+             FROM enderecos e
+            WHERE e.cliente_id = $1 AND e.principal = TRUE
+            ORDER BY e.criado_em ASC, e.id ASC
+            LIMIT 1`,
+          [id]
+        );
+
+        let principalId;
+        if (principalRows[0]) {
+          principalId = principalRows[0].id;
+          await client.query(
+            `UPDATE enderecos
+                SET logradouro = $1,
+                    numero = $2,
+                    complemento = $3,
+                    bairro = $4,
+                    municipio_id = $5,
+                    cep = $6,
+                    principal = TRUE,
+                    atualizado_em = NOW()
+              WHERE id = $7`,
+            [
+              String(logradouro).trim(),
+              numero || null,
+              complemento || null,
+              bairro || null,
+              municipio_id,
+              cep || null,
+              principalId,
+            ]
+          );
+        } else {
+          const { rows: novo } = await client.query(
+            `INSERT INTO enderecos (cliente_id, logradouro, numero, complemento, bairro, municipio_id, cep, principal)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+             RETURNING id`,
+            [
+              id,
+              String(logradouro).trim(),
+              numero || null,
+              complemento || null,
+              bairro || null,
+              municipio_id,
+              cep || null,
+            ]
+          );
+          principalId = novo[0].id;
+        }
+
+        await client.query(
+          `UPDATE enderecos
+              SET principal = FALSE,
+                  atualizado_em = NOW()
+            WHERE cliente_id = $1 AND id <> $2 AND principal = TRUE`,
+          [id, principalId]
+        );
       }
 
       await client.query('COMMIT');
