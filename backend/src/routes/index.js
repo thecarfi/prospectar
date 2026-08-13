@@ -6,6 +6,7 @@ const localizacaoRoutes = require('../modules/localizacao/localizacao.routes');
 const segmentosRoutes = require('../modules/segmentos/segmentos.routes');
 const statusClientesRoutes = require('../modules/status_clientes/status_clientes.routes');
 const papeisRoutes = require('../modules/papeis/papeis.routes');
+const consultasRoutes = require('../modules/consultas/consultas.routes');
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/localizacao', localizacaoRoutes);
 router.use('/segmentos', segmentosRoutes);
 router.use('/status-clientes', statusClientesRoutes);
 router.use('/papeis', papeisRoutes);
+router.use('/consultas', consultasRoutes);
 
 module.exports = router;

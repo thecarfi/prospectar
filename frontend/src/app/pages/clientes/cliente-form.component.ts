@@ -19,7 +19,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClientesService } from '../../core/services/clientes.service';
 import { StatusClientesService } from '../../core/services/status-clientes.service';
-import { Cliente, Segmento, StatusCliente } from '../../core/models';
+import { ConsultaCnpjService, ConsultaCnpj } from '../../core/services/consulta-cnpj.service';
+import { LocalizacaoService } from '../../core/services/localizacao.service';
+import { Cliente, Municipio, Segmento, StatusCliente } from '../../core/models';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 import { SeletorSegmentosComponent } from '../../shared/seletor-segmentos.component';
 
@@ -85,20 +87,30 @@ export function validarEndereco(
             <input matInput formControlName="nome" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>CPF/CNPJ</mat-label>
-            <input
-              matInput
-              formControlName="cpf_cnpj"
-              placeholder="CPF ou CNPJ"
-              [maxlength]="limiteDocumento"
-              (input)="onDocumentoInput()"
-              (blur)="formatarDocumento()"
-            />
-            @if (formulario.controls.cpf_cnpj.hasError('documentoInvalido')) {
-              <mat-error>Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).</mat-error>
-            }
-          </mat-form-field>
+          <div class="campo-documento full">
+            <mat-form-field appearance="outline" class="campo-documento-input">
+              <mat-label>CPF/CNPJ</mat-label>
+              <input
+                matInput
+                formControlName="cpf_cnpj"
+                placeholder="CPF ou CNPJ"
+                [maxlength]="18"
+                (blur)="formatarDocumento()"
+              />
+              @if (formulario.controls.cpf_cnpj.hasError('documentoInvalido')) {
+                <mat-error>Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).</mat-error>
+              }
+            </mat-form-field>
+            <button
+              mat-raised-button
+              color="primary"
+              type="button"
+              (click)="consultarOnline()"
+              [disabled]="!isCnpjValido() || consultando"
+            >
+              {{ consultando ? 'Consultando...' : 'Consultar online' }}
+            </button>
+          </div>
 
           <mat-form-field appearance="outline">
             <mat-label>Status *</mat-label>
@@ -189,6 +201,14 @@ export function validarEndereco(
       padding-top: 8px;
       margin-top: 8px;
     }
+    .campo-documento {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .campo-documento-input {
+      flex: 1;
+    }
     .endereco-error {
       grid-column: 1 / -1;
       color: #f44336;
@@ -206,6 +226,8 @@ export class ClienteFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly clientesService = inject(ClientesService);
   private readonly statusClientesService = inject(StatusClientesService);
+  private readonly consultaCnpjService = inject(ConsultaCnpjService);
+  private readonly localizacao = inject(LocalizacaoService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -234,6 +256,7 @@ export class ClienteFormComponent implements OnInit {
   statuses: StatusCliente[] = [];
   editando = false;
   salvando = false;
+  consultando = false;
   private clienteId: number | null = null;
 
   ngOnInit(): void {
@@ -274,15 +297,6 @@ export class ClienteFormComponent implements OnInit {
     }
   }
 
-  get limiteDocumento(): number {
-    const valor = (this.formulario.controls.cpf_cnpj.value ?? '').toString();
-    return valor.includes('/') ? 18 : 14;
-  }
-
-  onDocumentoInput(): void {
-    this.cdr.markForCheck();
-  }
-
   formatarDocumento(): void {
     const controle = this.formulario.controls.cpf_cnpj;
     const valor = (controle.value ?? '').toString();
@@ -300,6 +314,106 @@ export class ClienteFormComponent implements OnInit {
 
   private formatarCnpj(digitos: string): string {
     return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12, 14)}`;
+  }
+
+  isCnpjValido(): boolean {
+    const valor = (this.formulario.controls.cpf_cnpj.value ?? '').toString();
+    return valor.replace(/\D/g, '').length === 14;
+  }
+
+  consultarOnline(): void {
+    if (this.consultando || !this.isCnpjValido()) {
+      return;
+    }
+    const numero = (this.formulario.controls.cpf_cnpj.value ?? '')
+      .toString()
+      .replace(/\D/g, '');
+    this.localizacao.carregar();
+    this.consultando = true;
+    this.cdr.markForCheck();
+
+    this.consultaCnpjService.consultar(numero).subscribe({
+      next: (resposta) => {
+        if (resposta.status === 400) {
+          this.snackBar.open(resposta.titulo || 'Requisição inválida', 'Fechar', {
+            duration: 4000,
+          });
+          return;
+        }
+        this.aplicarDadosConsulta(resposta);
+      },
+      error: (erro) => {
+        this.snackBar.open(
+          erro.error?.titulo || erro.error?.message || 'Erro ao consultar CNPJ.',
+          'Fechar',
+          { duration: 4000 }
+        );
+      },
+      complete: () => {
+        this.consultando = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private aplicarDadosConsulta(resposta: ConsultaCnpj): void {
+    const estabelecimento = resposta.estabelecimento || {};
+    const endereco = this.formulario.controls.endereco;
+
+    endereco.controls.logradouro.setValue(
+      [estabelecimento.tipo_logradouro, estabelecimento.logradouro]
+        .filter((v): v is string => !!v && v.trim() !== '')
+        .join(' ')
+    );
+    endereco.controls.numero.setValue(estabelecimento.numero || '');
+    endereco.controls.complemento.setValue(estabelecimento.complemento || '');
+    endereco.controls.bairro.setValue(estabelecimento.bairro || '');
+    endereco.controls.cep.setValue(this.formatarCep(estabelecimento.cep || ''));
+
+    const sigla = estabelecimento.estado?.sigla || '';
+    endereco.controls.estado.setValue(sigla);
+
+    const nomeCidade = estabelecimento.cidade?.nome || '';
+    const municipio = this.buscarMunicipio(sigla, nomeCidade);
+    if (municipio) {
+      endereco.controls.municipio_id.setValue(municipio.id);
+    } else {
+      endereco.controls.municipio_id.setValue(null);
+      if (nomeCidade) {
+        this.snackBar.open(
+          `Cidade "${nomeCidade}" não encontrada na base. Preencha manualmente.`,
+          'Fechar',
+          { duration: 4000 }
+        );
+      }
+    }
+
+    this.formulario.controls.nome.setValue(resposta.razao_social || '');
+    this.cdr.markForCheck();
+  }
+
+  private buscarMunicipio(sigla: string, nome: string): Municipio | undefined {
+    if (!sigla || !nome) {
+      return undefined;
+    }
+    return this.localizacao
+      .municipiosPorUf(sigla)
+      .find((m) => this.normalizar(m.nome) === this.normalizar(nome));
+  }
+
+  private normalizar(valor: string): string {
+    return valor
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  private formatarCep(cep: string): string {
+    const digitos = cep.replace(/\D/g, '');
+    return digitos.length === 8
+      ? `${digitos.slice(0, 5)}-${digitos.slice(5, 8)}`
+      : cep;
   }
 
   salvar(): void {
