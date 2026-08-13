@@ -1,5 +1,6 @@
 const { pool } = require('../../config/db');
 const ApiError = require('../../utils/api-error');
+const { consultarCnpjWs } = require('../../utils/consulta-cnpj');
 
 const ENDERECO_PRINCIPAL_LATERAL = `
      LEFT JOIN LATERAL (
@@ -323,6 +324,16 @@ async function criar(req, res, next) {
 
     const cnaesNorm = await validarCnaes(cnaes);
 
+    if (formatarCnpj(cpf_cnpj)) {
+      const existente = await verificarCnpjExistente(cpf_cnpj);
+      if (existente) {
+        throw new ApiError(
+          409,
+          'CPF/CNPJ já existe na base e não será inserido novamente'
+        );
+      }
+    }
+
     let statusFinal = status_id;
     if (statusFinal == null) {
       const { rows: primeiro } = await pool.query(
@@ -345,7 +356,7 @@ async function criar(req, res, next) {
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, nome, cpf_cnpj, status_id,
                    observacoes, criado_por, criado_em, atualizado_em`,
-        [nome, cpf_cnpj || null, statusFinal, observacoes || null, req.user.id]
+        [nome, formatarCnpj(cpf_cnpj), statusFinal, observacoes || null, req.user.id]
       );
 
       if (Array.isArray(segmento_ids) && segmento_ids.length > 0) {
@@ -397,6 +408,206 @@ async function criar(req, res, next) {
   }
 }
 
+function normalizar(valor) {
+  return (valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function formatarCnpj(valor) {
+  const digitos = String(valor ?? '').replace(/\D/g, '');
+  if (digitos.length !== 14) {
+    return valor || null;
+  }
+  return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(
+    5,
+    8
+  )}/${digitos.slice(8, 12)}-${digitos.slice(12, 14)}`;
+}
+
+async function verificarCnpjExistente(documento, excluirId = null) {
+  const digitos = String(documento ?? '').replace(/\D/g, '');
+  if (digitos.length === 0) {
+    return null;
+  }
+  const params = [digitos];
+  let sql = `SELECT id FROM clientes
+              WHERE cpf_cnpj IS NOT NULL
+                AND regexp_replace(cpf_cnpj, '\\D', '', 'g') = $1`;
+  if (excluirId != null) {
+    params.push(excluirId);
+    sql += ` AND id <> $${params.length}`;
+  }
+  sql += ' LIMIT 1';
+  const { rows } = await pool.query(sql, params);
+  return rows[0] ? rows[0].id : null;
+}
+
+async function buscarMunicipio(sigla, nome) {
+  if (!sigla || !nome) {
+    return null;
+  }
+  const { rows } = await pool.query(
+    `SELECT m.id, m.nome
+       FROM municipios m
+       JOIN estados e ON e.id = m.estado_id
+      WHERE e.sigla = $1`,
+    [sigla]
+  );
+  const alvo = normalizar(nome);
+  const municipio = rows.find((m) => normalizar(m.nome) === alvo);
+  return municipio ? municipio.id : null;
+}
+
+async function filtrarCnaesExistentes(dados) {
+  const estabelecimento = dados.estabelecimento || {};
+  const principal = String(estabelecimento.atividade_principal?.id ?? '').trim();
+  const secundarias = (estabelecimento.atividades_secundarias ?? [])
+    .map((a) => String(a?.id ?? '').trim())
+    .filter((id) => id && id !== principal);
+
+  const codigos = [...new Set([...(principal ? [principal] : []), ...secundarias])];
+  if (codigos.length === 0) {
+    return [];
+  }
+
+  const { rows } = await pool.query(
+    'SELECT subclasse FROM cnae WHERE subclasse = ANY($1::text[])',
+    [codigos]
+  );
+  const existentes = new Set(rows.map((r) => r.subclasse));
+
+  const lista = codigos
+    .filter((c) => existentes.has(c))
+    .map((c) => ({ subclasse: c, principal: c === principal }));
+
+  if (lista.length > 0 && !lista.some((c) => c.principal)) {
+    lista[0].principal = true;
+  }
+  return lista;
+}
+
+async function criarPorCnpj(req, res, next) {
+  try {
+    const { cnpj, status_id, segmento_ids, observacoes } = req.body;
+    const cnpjDigitos = String(cnpj).replace(/\D/g, '');
+
+    const existente = await verificarCnpjExistente(cnpjDigitos);
+    if (existente) {
+      throw new ApiError(
+        409,
+        'CNPJ já existe na base e não será inserido novamente'
+      );
+    }
+
+    const dados = await consultarCnpjWs(cnpjDigitos);
+    if (dados.status === 400 || dados.status === 404) {
+      throw new ApiError(dados.status, dados.titulo || 'CNPJ não encontrado');
+    }
+    if (dados.status === 500) {
+      throw new ApiError(502, dados.detalhes || 'Erro ao consultar CNPJ');
+    }
+
+    const estabelecimento = dados.estabelecimento || {};
+    const nome =
+      dados.razao_social?.trim() || estabelecimento.nome_fantasia?.trim();
+    if (!nome) {
+      throw new ApiError(400, 'CNPJ não possui razão social cadastrada');
+    }
+
+    const cpfCnpj = formatarCnpj(estabelecimento.cnpj || cnpjDigitos);
+
+    const municipioId = await buscarMunicipio(
+      estabelecimento.estado?.sigla,
+      estabelecimento.cidade?.nome
+    );
+
+    const logradouro = [
+      estabelecimento.tipo_logradouro,
+      estabelecimento.logradouro,
+    ]
+      .filter((v) => v && String(v).trim() !== '')
+      .join(' ')
+      .trim();
+
+    const cnaesNorm = await filtrarCnaesExistentes(dados);
+
+    let statusFinal = status_id;
+    if (statusFinal == null) {
+      const { rows: primeiro } = await pool.query(
+        'SELECT id FROM status_clientes ORDER BY id LIMIT 1'
+      );
+      if (!primeiro[0]) {
+        throw new ApiError(400, 'Nenhum status cadastrado');
+      }
+      statusFinal = primeiro[0].id;
+    } else {
+      await validarStatus(statusFinal);
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const { rows } = await client.query(
+        `INSERT INTO clientes (nome, cpf_cnpj, status_id, observacoes, criado_por)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, nome, cpf_cnpj, status_id,
+                   observacoes, criado_por, criado_em, atualizado_em`,
+        [nome, cpfCnpj || null, statusFinal, observacoes || null, req.user.id]
+      );
+
+      if (Array.isArray(segmento_ids) && segmento_ids.length > 0) {
+        await client.query(
+          `INSERT INTO cliente_segmentos (cliente_id, segmento_id)
+           SELECT $1, unnest($2::int[])
+           ON CONFLICT DO NOTHING`,
+          [rows[0].id, segmento_ids]
+        );
+      }
+
+      for (const c of cnaesNorm) {
+        await client.query(
+          `INSERT INTO cliente_cnae (cliente_id, subclasse, principal)
+           VALUES ($1, $2, $3)`,
+          [rows[0].id, c.subclasse, c.principal]
+        );
+      }
+
+      if (municipioId && logradouro) {
+        await client.query(
+          `INSERT INTO enderecos (cliente_id, logradouro, numero, complemento, bairro, municipio_id, cep, principal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)`,
+          [
+            rows[0].id,
+            logradouro,
+            estabelecimento.numero || null,
+            estabelecimento.complemento || null,
+            estabelecimento.bairro || null,
+            municipioId,
+            String(estabelecimento.cep || '').replace(/\D/g, '') || null,
+          ]
+        );
+      }
+
+      await client.query('COMMIT');
+      res.status(201).json(rows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    if (err.code === '23505') {
+      return next(new ApiError(409, 'CPF/CNPJ já cadastrado'));
+    }
+    next(err);
+  }
+}
+
 async function atualizar(req, res, next) {
   const { id } = req.params;
   const {
@@ -417,6 +628,16 @@ async function atualizar(req, res, next) {
   try {
     if (status_id != null) {
       await validarStatus(status_id);
+    }
+
+    if (formatarCnpj(cpf_cnpj)) {
+      const existente = await verificarCnpjExistente(cpf_cnpj, id);
+      if (existente) {
+        throw new ApiError(
+          409,
+          'CPF/CNPJ já existe na base e não será inserido novamente'
+        );
+      }
     }
 
     const cnaesInformado = 'cnaes' in req.body;
@@ -452,7 +673,7 @@ async function atualizar(req, res, next) {
           WHERE id = $5
           RETURNING id, nome, cpf_cnpj, status_id,
                     observacoes, criado_por, criado_em, atualizado_em`,
-        [nome ?? null, cpf_cnpj ?? null, status_id ?? null, observacoes ?? null, id]
+        [nome ?? null, formatarCnpj(cpf_cnpj), status_id ?? null, observacoes ?? null, id]
       );
 
       if ('segmento_ids' in req.body) {
@@ -580,4 +801,12 @@ async function excluir(req, res, next) {
   }
 }
 
-module.exports = { listar, estatisticas, detalhar, criar, atualizar, excluir };
+module.exports = {
+  listar,
+  estatisticas,
+  detalhar,
+  criar,
+  criarPorCnpj,
+  atualizar,
+  excluir,
+};

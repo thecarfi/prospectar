@@ -54,6 +54,24 @@ router.post(
   clientesController.criar
 );
 
+router.post(
+  '/from-cnpj',
+  requirePermission('clientes:criar'),
+  body('cnpj')
+    .trim()
+    .custom((valor) => {
+      const digitos = String(valor || '').replace(/\D/g, '');
+      return digitos.length === 14;
+    })
+    .withMessage('CNPJ inválido'),
+  body('status_id').optional().isInt().withMessage('Status inválido'),
+  body('segmento_ids').optional().isArray().withMessage('Segmentos inválidos'),
+  body('segmento_ids.*').optional().isInt().withMessage('Segmento inválido'),
+  body('observacoes').optional().trim(),
+  validate,
+  clientesController.criarPorCnpj
+);
+
 router.put(
   '/:id',
   requirePermission('clientes:editar'),
