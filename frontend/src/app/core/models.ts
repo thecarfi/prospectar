@@ -81,6 +81,7 @@ export interface Cliente {
   municipio_uf?: string;
   status_id?: number;
   status_nome?: string;
+  status_descricao?: string;
   status_cor?: string;
   observacoes?: string;
   criado_por?: number;

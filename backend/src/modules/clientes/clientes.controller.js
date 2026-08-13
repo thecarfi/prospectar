@@ -92,7 +92,7 @@ async function listar(req, res, next) {
 
     const { rows } = await pool.query(
       `SELECT c.id, c.nome, c.cpf_cnpj,
-              c.status_id, st.nome AS status_nome, st.cor AS status_cor,
+              c.status_id, st.nome AS status_nome, st.descricao AS status_descricao, st.cor AS status_cor,
               c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
               c.observacoes, c.criado_por, c.criado_em, c.atualizado_em,
               COALESCE((SELECT string_agg(s.nome, ', ' ORDER BY s.nome)
@@ -144,7 +144,7 @@ async function detalhar(req, res, next) {
 
     const { rows: clientes } = await pool.query(
       `SELECT c.id, c.nome, c.cpf_cnpj,
-              c.status_id, st.nome AS status_nome, st.cor AS status_cor,
+              c.status_id, st.nome AS status_nome, st.descricao AS status_descricao, st.cor AS status_cor,
               c.municipio_id, m.nome AS municipio_nome, e.sigla AS municipio_uf,
               c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
          FROM clientes c

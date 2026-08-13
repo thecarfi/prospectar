@@ -134,6 +134,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
                 class="status-pill"
                 [style.background]="corFundo(cliente.status_cor)"
                 [style.color]="cliente.status_cor || '#424242'"
+                matTooltip="{{ cliente.status_descricao || '' }}"
               >
                 {{ cliente.status_nome || '—' }}
               </span>
