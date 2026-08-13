@@ -40,7 +40,7 @@ interface NavItem {
           <mat-icon>groups</mat-icon>
           <span *ngIf="!menuRecolhido">Gestão de Clientes</span>
         </div>
-        <mat-nav-list>
+        <mat-nav-list class="nav-list">
           <ng-container *ngFor="let item of itensNav">
             <a
               mat-list-item
@@ -55,6 +55,24 @@ interface NavItem {
             </a>
           </ng-container>
         </mat-nav-list>
+        <div class="sidenav-footer" *ngIf="auth.usuario()">
+          <button
+            mat-button
+            class="user-footer"
+            [matMenuTriggerFor]="menuUsuario"
+            [matTooltip]="menuRecolhido ? auth.usuario()!.nome : ''"
+            matTooltipPosition="right"
+          >
+            <mat-icon>account_circle</mat-icon>
+            <span *ngIf="!menuRecolhido">{{ auth.usuario()!.nome }}</span>
+          </button>
+          <mat-menu #menuUsuario="matMenu">
+            <button mat-menu-item (click)="sair()">
+              <mat-icon>logout</mat-icon>
+              <span>Sair</span>
+            </button>
+          </mat-menu>
+        </div>
       </mat-sidenav>
 
       <mat-sidenav-content class="layout-content">
@@ -69,19 +87,6 @@ interface NavItem {
           </button>
           <span class="toolbar-title">Sistema de Gestão de Clientes</span>
           <span class="spacer"></span>
-          <span class="user-info" *ngIf="auth.usuario()">
-            {{ auth.usuario()!.nome }}
-            <mat-icon class="user-avatar">account_circle</mat-icon>
-          </span>
-          <button mat-icon-button [matMenuTriggerFor]="menu">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #menu="matMenu">
-            <button mat-menu-item (click)="sair()">
-              <mat-icon>logout</mat-icon>
-              <span>Sair</span>
-            </button>
-          </mat-menu>
         </mat-toolbar>
 
         <main class="page-container">
@@ -95,9 +100,16 @@ interface NavItem {
       height: 100vh;
     }
     .layout-sidenav {
+      display: flex;
+      flex-direction: column;
       width: 260px;
       border-right: 1px solid rgba(0, 0, 0, 0.08);
       transition: width 0.2s ease;
+    }
+    .layout-sidenav ::ng-deep .mat-drawer-inner-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
     .layout-sidenav.collapsed {
       width: 64px;
@@ -109,6 +121,10 @@ interface NavItem {
     .layout-sidenav.collapsed ::ng-deep .mdc-list-item {
       padding: 0;
       justify-content: center;
+    }
+    .nav-list {
+      flex: 1;
+      overflow: auto;
     }
     .logo {
       display: flex;
@@ -139,16 +155,27 @@ interface NavItem {
     .spacer {
       flex: 1 1 auto;
     }
-    .user-info {
+    .sidenav-footer {
+      margin-top: auto;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .sidenav-footer .user-footer {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-right: 4px;
+      width: 100%;
+      padding: 12px 16px;
+      justify-content: flex-start;
     }
-    .user-avatar {
-      font-size: 28px;
-      width: 28px;
-      height: 28px;
+    .sidenav-footer .user-footer mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+    .layout-sidenav.collapsed .sidenav-footer .user-footer {
+      justify-content: center;
+      min-width: 48px;
+      padding: 12px 0;
     }
     .page-container {
       flex: 1;
