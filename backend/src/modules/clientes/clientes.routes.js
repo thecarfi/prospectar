@@ -4,6 +4,7 @@ const clientesController = require('./clientes.controller');
 const contatosRoutes = require('../contatos/contatos.routes');
 const enderecosRoutes = require('../enderecos/enderecos.routes');
 const interacoesRoutes = require('../interacoes/interacoes.routes');
+const clienteCnaeRoutes = require('../cnae/cliente-cnae.routes');
 const authenticate = require('../../middleware/auth');
 const requirePermission = require('../../middleware/rbac');
 const validate = require('../../middleware/validate');
@@ -84,5 +85,6 @@ router.delete(
 router.use('/:clienteId/contatos', contatosRoutes);
 router.use('/:clienteId/enderecos', enderecosRoutes);
 router.use('/:clienteId/interacoes', interacoesRoutes);
+router.use('/:clienteId/cnaes', clienteCnaeRoutes);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit, inject } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
-import { NgIf, DatePipe } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NgIf, NgFor, DatePipe } from '@angular/common';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatCardModule } from '@angular/material/card';
@@ -16,11 +16,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ContatosService } from '../../core/services/contatos.service';
 import { EnderecosService } from '../../core/services/enderecos.service';
 import { InteracoesService } from '../../core/services/interacoes.service';
-import { ClienteDetalhe, Contato, Endereco, Interacao, Segmento } from '../../core/models';
+import { CnaeService } from '../../core/services/cnae.service';
+import { ClienteDetalhe, Contato, Endereco, Interacao, Segmento, Cnae, ClienteCnae } from '../../core/models';
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
@@ -44,6 +46,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
     MatProgressBarModule,
     MatTooltipModule,
     PermissaoDirective,
+    MatAutocompleteModule,
   ],
   template: `
     <div class="header" *ngIf="cliente">
@@ -238,6 +241,67 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
             </table>
             <p *ngIf="cliente.interacoes.length === 0" class="empty">Nenhuma interação registrada.</p>
           </mat-tab>
+
+          <mat-tab [label]="'CNAE (' + (cliente.cnaes?.length || 0) + ')'">
+            <div class="tab-actions">
+              <button
+                mat-flat-button
+                color="primary"
+                (click)="adicionarCnae()"
+                appPermissao="cnae:criar"
+              >
+                <mat-icon>add</mat-icon>
+                Adicionar CNAE
+              </button>
+            </div>
+            <table mat-table [dataSource]="cliente.cnaes || []" class="mat-elevation-z0">
+              <ng-container matColumnDef="secao">
+                <th mat-header-cell *matHeaderCellDef>Seção</th>
+                <td mat-cell *matCellDef="let cnae">{{ cnae.secao }}</td>
+              </ng-container>
+              <ng-container matColumnDef="divisao">
+                <th mat-header-cell *matHeaderCellDef>Divisão</th>
+                <td mat-cell *matCellDef="let cnae">{{ cnae.divisao }}</td>
+              </ng-container>
+              <ng-container matColumnDef="subclasse">
+                <th mat-header-cell *matHeaderCellDef>Subclasse</th>
+                <td mat-cell *matCellDef="let cnae">{{ cnae.subclasse }}</td>
+              </ng-container>
+              <ng-container matColumnDef="descricao_subclasse">
+                <th mat-header-cell *matHeaderCellDef>Descrição</th>
+                <td mat-cell *matCellDef="let cnae">{{ cnae.descricao_subclasse }}</td>
+              </ng-container>
+              <ng-container matColumnDef="principal">
+                <th mat-header-cell *matHeaderCellDef>Principal</th>
+                <td mat-cell *matCellDef="let cnae">
+                  <button
+                    mat-icon-button
+                    appPermissao="cnae:editar"
+                    [matTooltip]="cnae.principal ? 'Atividade principal' : 'Marcar como principal'"
+                    (click)="definirCnaePrincipal(cnae)"
+                  >
+                    <mat-icon [class.principal-icon]="cnae.principal">
+                      {{ cnae.principal ? 'star' : 'star_border' }}
+                    </mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="acoes">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let cnae" class="acoes-cell">
+                  <button mat-icon-button (click)="editarCnae(cnae)" appPermissao="cnae:editar">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" (click)="excluirCnae(cnae)" appPermissao="cnae:excluir">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="colunasCnae"></tr>
+              <tr mat-row *matRowDef="let row; columns: colunasCnae"></tr>
+            </table>
+            <p *ngIf="!cliente.cnaes?.length" class="empty">Nenhum CNAE vinculado.</p>
+          </mat-tab>
         </mat-tab-group>
       </mat-card-content>
     </mat-card>
@@ -293,6 +357,7 @@ import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.compon
     .tipo-pill.visita { background: #e8f5e9; color: #2e7d32; }
     .tipo-pill.anotacao { background: #f3e5f5; color: #6a1b9a; }
     .tipo-pill.mensagem { background: #fffde7; color: #f9a825; }
+    .principal-icon { color: #f9a825; }
   `,
 })
 export class ClienteDetailComponent implements OnInit {
@@ -301,6 +366,7 @@ export class ClienteDetailComponent implements OnInit {
   private readonly contatosService = inject(ContatosService);
   private readonly enderecosService = inject(EnderecosService);
   private readonly interacoesService = inject(InteracoesService);
+  private readonly cnaeService = inject(CnaeService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -310,6 +376,7 @@ export class ClienteDetailComponent implements OnInit {
   readonly colunasContato = ['nome', 'email', 'telefone', 'cargo', 'acoes'];
   readonly colunasEndereco = ['logradouro', 'bairro', 'cidade', 'cep', 'acoes'];
   readonly colunasInteracao = ['tipo', 'assunto', 'ocorreu_em', 'criado_por', 'acoes'];
+  readonly colunasCnae = ['secao', 'divisao', 'subclasse', 'descricao_subclasse', 'principal', 'acoes'];
 
   private clienteId = 0;
 
@@ -450,6 +517,64 @@ export class ClienteDetailComponent implements OnInit {
       `Deseja excluir a interação "${interacao.assunto}"?`,
       () =>
         this.interacoesService.excluir(this.clienteId, interacao.id).subscribe({
+          next: () => this.carregar(),
+        })
+    );
+  }
+
+  adicionarCnae(): void {
+    const vinculados = (this.cliente?.cnaes ?? []).map((c) => c.subclasse);
+    const ref = this.dialog.open(CnaeDialogComponent, {
+      width: '520px',
+      data: { vinculados },
+    });
+    ref.afterClosed().subscribe((dados) => {
+      if (!dados) return;
+      this.cnaeService.adicionar(this.clienteId, dados).subscribe({
+        next: () => {
+          this.snackBar.open('CNAE adicionado.', 'Fechar', { duration: 3000 });
+          this.carregar();
+        },
+      });
+    });
+  }
+
+  editarCnae(cnae: ClienteCnae): void {
+    const ref = this.dialog.open(CnaeDialogComponent, {
+      width: '520px',
+      data: { cnae },
+    });
+    ref.afterClosed().subscribe((dados) => {
+      if (!dados) return;
+      this.cnaeService
+        .atualizar(this.clienteId, cnae.subclasse, dados)
+        .subscribe({
+          next: () => {
+            this.snackBar.open('CNAE atualizado.', 'Fechar', { duration: 3000 });
+            this.carregar();
+          },
+        });
+    });
+  }
+
+  definirCnaePrincipal(cnae: ClienteCnae): void {
+    if (cnae.principal) return;
+    this.cnaeService
+      .atualizar(this.clienteId, cnae.subclasse, { principal: true })
+      .subscribe({
+        next: () => {
+          this.snackBar.open('CNAE definido como principal.', 'Fechar', { duration: 3000 });
+          this.carregar();
+        },
+      });
+  }
+
+  excluirCnae(cnae: ClienteCnae): void {
+    this.confirmarExclusao(
+      'Excluir CNAE',
+      `Deseja excluir o CNAE "${cnae.subclasse} - ${cnae.descricao_subclasse}"?`,
+      () =>
+        this.cnaeService.remover(this.clienteId, cnae.subclasse).subscribe({
           next: () => this.carregar(),
         })
     );
@@ -760,5 +885,147 @@ export class InteracaoDialogComponent {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+}
+
+export interface CnaeDialogData {
+  cnae?: ClienteCnae;
+  vinculados?: string[];
+}
+
+@Component({
+  selector: 'app-cnae-dialog',
+  imports: [
+    NgIf,
+    NgFor,
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule,
+    MatButtonModule,
+    MatAutocompleteModule,
+  ],
+  template: `
+    <h2 mat-dialog-title>{{ data.cnae ? 'Editar CNAE' : 'Adicionar CNAE' }}</h2>
+    <mat-dialog-content>
+      <form [formGroup]="formulario" class="dialog-form">
+        <ng-container *ngIf="data.cnae; else busca">
+          <div class="cnae-selecionado">
+            <strong>{{ data.cnae.subclasse }}</strong> - {{ data.cnae.descricao_subclasse }}
+          </div>
+        </ng-container>
+        <ng-template #busca>
+          <mat-form-field appearance="outline">
+            <mat-label>Buscar CNAE *</mat-label>
+            <input
+              matInput
+              [formControl]="buscaControl"
+              [matAutocomplete]="auto"
+              placeholder="Busque por código ou descrição"
+            />
+            <mat-autocomplete
+              #auto="matAutocomplete"
+              (optionSelected)="aoSelecionar($event.option.value)"
+            >
+              <mat-option *ngFor="let cnae of opcoes; trackBy: rastrear" [value]="cnae">
+                {{ cnae.subclasse }} - {{ cnae.descricao_subclasse }}
+              </mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+          <div class="cnae-selecionado" *ngIf="selecionado">
+            <strong>{{ selecionado.subclasse }}</strong> - {{ selecionado.descricao_subclasse }}
+          </div>
+        </ng-template>
+        <mat-checkbox formControlName="principal">Atividade principal</mat-checkbox>
+      </form>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancelar</button>
+      <button mat-flat-button color="primary" [disabled]="!selecionado" (click)="salvar()">Salvar</button>
+    </mat-dialog-actions>
+  `,
+  styles: `
+    .dialog-form {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-top: 8px;
+    }
+    .cnae-selecionado {
+      padding: 8px 0;
+    }
+  `,
+})
+export class CnaeDialogComponent implements OnInit {
+  private readonly fb = inject(FormBuilder);
+  private readonly dialogRef = inject(MatDialogRef<CnaeDialogComponent>);
+  private readonly cnaeService = inject(CnaeService);
+  readonly data = inject<CnaeDialogData>(MAT_DIALOG_DATA);
+
+  readonly buscaControl = new FormControl('');
+  readonly formulario = this.fb.nonNullable.group({
+    principal: [
+      this.data.cnae
+        ? this.data.cnae.principal
+        : !this.data.vinculados || this.data.vinculados.length === 0,
+    ],
+  });
+
+  selecionado: Cnae | null = this.data.cnae ?? null;
+  opcoes: Cnae[] = [];
+
+  private catalogo: Cnae[] = [];
+  private readonly vinculados = new Set(this.data.vinculados ?? []);
+
+  ngOnInit(): void {
+    this.cnaeService.listar().subscribe({
+      next: (lista) => {
+        this.catalogo = lista;
+        this.filtrar(this.buscaControl.value ?? '');
+      },
+    });
+    this.buscaControl.valueChanges.subscribe((termo) =>
+      this.filtrar(termo ?? '')
+    );
+  }
+
+  aoSelecionar(cnae: Cnae): void {
+    this.selecionado = cnae;
+    this.buscaControl.setValue(
+      `${cnae.subclasse} - ${cnae.descricao_subclasse}`,
+      { emitEvent: false }
+    );
+  }
+
+  salvar(): void {
+    if (!this.selecionado) return;
+    this.dialogRef.close({
+      subclasse: this.selecionado.subclasse,
+      principal: this.formulario.getRawValue().principal,
+    });
+  }
+
+  rastrear(_: number, cnae: Cnae): string {
+    return cnae.subclasse;
+  }
+
+  private filtrar(termo: string): void {
+    const t = termo.toLowerCase().trim();
+    this.opcoes = this.catalogo
+      .filter((c) => {
+        if (this.vinculados.has(c.subclasse)) {
+          return false;
+        }
+        if (!t) {
+          return true;
+        }
+        return [
+          c.subclasse,
+          c.descricao_subclasse,
+          c.descricao_classe,
+        ].some((v) => v.toLowerCase().includes(t));
+      })
+      .slice(0, 50);
   }
 }
