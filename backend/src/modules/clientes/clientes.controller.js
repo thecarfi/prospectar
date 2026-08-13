@@ -54,6 +54,46 @@ async function validarEndereco(logradouro, municipioId) {
   await validarMunicipio(municipioId);
 }
 
+async function validarCnaes(cnaes) {
+  if (!Array.isArray(cnaes) || cnaes.length === 0) {
+    return [];
+  }
+
+  const subclasses = cnaes.map((c) => String(c.subclasse ?? '').trim());
+  const { rows } = await pool.query(
+    'SELECT subclasse FROM cnae WHERE subclasse = ANY($1::text[])',
+    [subclasses]
+  );
+  const existentes = new Set(rows.map((r) => r.subclasse));
+  const naoEncontradas = [...new Set(subclasses)].filter((s) => !existentes.has(s));
+  if (naoEncontradas.length > 0) {
+    throw new ApiError(
+      400,
+      `Subclasse CNAE não encontrada: ${naoEncontradas.join(', ')}`
+    );
+  }
+
+  const mapa = new Map();
+  for (const c of cnaes) {
+    mapa.set(String(c.subclasse).trim(), !!c.principal);
+  }
+  const lista = [...mapa].map(([subclasse, principal]) => ({ subclasse, principal }));
+
+  if (lista.some((c) => c.principal)) {
+    let jaMarcado = false;
+    for (const c of lista) {
+      if (c.principal && !jaMarcado) {
+        jaMarcado = true;
+      } else {
+        c.principal = false;
+      }
+    }
+  } else {
+    lista[0].principal = true;
+  }
+  return lista;
+}
+
 async function listar(req, res, next) {
   try {
     const {
@@ -235,6 +275,15 @@ async function detalhar(req, res, next) {
         ORDER BY s.nome`,
       [id]
     );
+    const { rows: cnaes } = await pool.query(
+      `SELECT cn.secao, cn.divisao, cn.grupo, cn.classe,
+              cn.subclasse, cn.descricao_subclasse, cc.principal
+         FROM cnae cn
+         JOIN cliente_cnae cc ON cc.subclasse = cn.subclasse
+        WHERE cc.cliente_id = $1
+        ORDER BY cn.subclasse`,
+      [id]
+    );
 
     res.json({
       ...cliente,
@@ -243,6 +292,7 @@ async function detalhar(req, res, next) {
       endereco_principal: principalRows[0] || null,
       interacoes,
       segmentos,
+      cnaes,
     });
   } catch (err) {
     next(err);
@@ -263,12 +313,15 @@ async function criar(req, res, next) {
       bairro,
       cep,
       municipio_id,
+      cnaes,
     } = req.body;
 
     const enderecoInformado = enderecoPreenchido(logradouro, municipio_id);
     if (enderecoInformado) {
       await validarEndereco(logradouro, municipio_id);
     }
+
+    const cnaesNorm = await validarCnaes(cnaes);
 
     let statusFinal = status_id;
     if (statusFinal == null) {
@@ -301,6 +354,14 @@ async function criar(req, res, next) {
            SELECT $1, unnest($2::int[])
            ON CONFLICT DO NOTHING`,
           [rows[0].id, segmento_ids]
+        );
+      }
+
+      for (const c of cnaesNorm) {
+        await client.query(
+          `INSERT INTO cliente_cnae (cliente_id, subclasse, principal)
+           VALUES ($1, $2, $3)`,
+          [rows[0].id, c.subclasse, c.principal]
         );
       }
 
@@ -350,12 +411,16 @@ async function atualizar(req, res, next) {
     bairro,
     cep,
     municipio_id,
+    cnaes,
   } = req.body;
 
   try {
     if (status_id != null) {
       await validarStatus(status_id);
     }
+
+    const cnaesInformado = 'cnaes' in req.body;
+    const cnaesNorm = cnaesInformado ? await validarCnaes(cnaes) : [];
 
     const secaoEndereco =
       'logradouro' in req.body || 'municipio_id' in req.body;
@@ -402,6 +467,20 @@ async function atualizar(req, res, next) {
              SELECT $1, unnest($2::int[])
              ON CONFLICT DO NOTHING`,
             [id, lista]
+          );
+        }
+      }
+
+      if (cnaesInformado) {
+        await client.query(
+          'DELETE FROM cliente_cnae WHERE cliente_id = $1',
+          [id]
+        );
+        for (const c of cnaesNorm) {
+          await client.query(
+            `INSERT INTO cliente_cnae (cliente_id, subclasse, principal)
+             VALUES ($1, $2, $3)`,
+            [id, c.subclasse, c.principal]
           );
         }
       }

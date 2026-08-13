@@ -45,6 +45,9 @@ router.post(
   body('cep').optional().trim(),
   body('segmento_ids').optional().isArray().withMessage('Segmentos inválidos'),
   body('segmento_ids.*').optional().isInt().withMessage('Segmento inválido'),
+  body('cnaes').optional().isArray().withMessage('CNAEs inválidos'),
+  body('cnaes.*.subclasse').optional().isString().withMessage('Subclasse CNAE inválida'),
+  body('cnaes.*.principal').optional().isBoolean().withMessage('Indicador principal inválido'),
   body('status_id').optional().isInt().withMessage('Status inválido'),
   validate,
   clientesController.criar
@@ -62,6 +65,9 @@ router.put(
   body('cep').optional().trim(),
   body('segmento_ids').optional().isArray().withMessage('Segmentos inválidos'),
   body('segmento_ids.*').optional().isInt().withMessage('Segmento inválido'),
+  body('cnaes').optional().isArray().withMessage('CNAEs inválidos'),
+  body('cnaes.*.subclasse').optional().isString().withMessage('Subclasse CNAE inválida'),
+  body('cnaes.*.principal').optional().isBoolean().withMessage('Indicador principal inválido'),
   body('status_id').optional().isInt().withMessage('Status inválido'),
   validate,
   clientesController.atualizar

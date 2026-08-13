@@ -36,6 +36,7 @@ export interface ConsultaCnpj {
     estado?: { id?: number; nome?: string; sigla?: string; ibge_id?: number };
     cidade?: { id?: number; nome?: string; ibge_id?: number; siafi_id?: string };
     atividade_principal?: { id?: string; descricao?: string };
+    atividades_secundarias?: { id?: string; descricao?: string }[];
     pais?: { id?: string; iso2?: string; iso3?: string; nome?: string };
   };
 }

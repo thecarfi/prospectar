@@ -13,6 +13,7 @@ const PERMISSOES = {
   usuarios: ['ver', 'gerenciar'],
   segmentos: ['ver', 'criar', 'editar', 'excluir'],
   status_clientes: ['ver', 'criar', 'editar', 'excluir'],
+  cnae: ['ver'],
   configuracao: ['ver'],
   permissoes: ['ver', 'gerenciar'],
 };
@@ -78,6 +79,7 @@ const PAPEIS = {
     'usuarios:ver',
     'segmentos:ver',
     'status_clientes:ver',
+    'cnae:ver',
     'configuracao:ver',
   ],
   visualizador: [
@@ -87,6 +89,7 @@ const PAPEIS = {
     'interacoes:ver',
     'segmentos:ver',
     'status_clientes:ver',
+    'cnae:ver',
     'configuracao:ver',
   ],
 };

@@ -50,6 +50,23 @@ export interface Segmento {
   descricao?: string;
 }
 
+export interface Cnae {
+  secao: string;
+  descricao_secao: string;
+  divisao: string;
+  descricao_divisao: string;
+  grupo: string;
+  descricao_grupo: string;
+  classe: string;
+  descricao_classe: string;
+  subclasse: string;
+  descricao_subclasse: string;
+}
+
+export interface ClienteCnae extends Cnae {
+  principal: boolean;
+}
+
 export interface StatusCliente {
   id: number;
   nome: string;
@@ -94,8 +111,8 @@ export interface ClienteDetalhe extends Cliente {
   enderecos: Endereco[];
   endereco_principal?: Endereco | null;
   interacoes: Interacao[];
+  cnaes?: ClienteCnae[];
 }
-
 export interface ClienteFiltros {
   busca?: string;
   cidade?: string;

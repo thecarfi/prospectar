@@ -21,9 +21,11 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { StatusClientesService } from '../../core/services/status-clientes.service';
 import { ConsultaCnpjService, ConsultaCnpj } from '../../core/services/consulta-cnpj.service';
 import { LocalizacaoService } from '../../core/services/localizacao.service';
-import { Cliente, Municipio, Segmento, StatusCliente } from '../../core/models';
+import { Cliente, ClienteCnae, Municipio, Segmento, StatusCliente } from '../../core/models';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 import { SeletorSegmentosComponent } from '../../shared/seletor-segmentos.component';
+import { SeletorCnaeComponent } from '../../shared/seletor-cnae.component';
+import { CnaeService } from '../../core/services/cnae.service';
 
 export function validarDocumento(
   control: AbstractControl
@@ -73,6 +75,7 @@ export function validarEndereco(
     MatSelectModule,
     SeletorMunicipioComponent,
     SeletorSegmentosComponent,
+    SeletorCnaeComponent,
   ],
   template: `
     <div class="header">
@@ -157,6 +160,11 @@ export function validarEndereco(
             }
           </div>
 
+          <app-seletor-cnae
+            class="full"
+            [control]="formulario.controls.cnaes"
+          ></app-seletor-cnae>
+
           <mat-form-field appearance="outline" class="full">
             <mat-label>Observações</mat-label>
             <textarea
@@ -228,6 +236,7 @@ export class ClienteFormComponent implements OnInit {
   private readonly statusClientesService = inject(StatusClientesService);
   private readonly consultaCnpjService = inject(ConsultaCnpjService);
   private readonly localizacao = inject(LocalizacaoService);
+  private readonly cnaeService = inject(CnaeService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -238,6 +247,7 @@ export class ClienteFormComponent implements OnInit {
     cpf_cnpj: ['', validarDocumento],
     status_id: [null as number | null, Validators.required],
     segmentos: this.fb.control<Segmento[]>([]),
+    cnaes: this.fb.control<ClienteCnae[]>([]),
     observacoes: [''],
     endereco: this.fb.nonNullable.group(
       {
@@ -281,6 +291,7 @@ export class ClienteFormComponent implements OnInit {
           cpf_cnpj: cliente.cpf_cnpj || '',
           status_id: cliente.status_id ?? null,
           segmentos: cliente.segmentos || [],
+          cnaes: cliente.cnaes || [],
           observacoes: cliente.observacoes || '',
           endereco: {
             logradouro: principal?.logradouro || '',
@@ -389,7 +400,61 @@ export class ClienteFormComponent implements OnInit {
     }
 
     this.formulario.controls.nome.setValue(resposta.razao_social || '');
+
+    this.aplicarCnaesDaConsulta(estabelecimento);
+
     this.cdr.markForCheck();
+  }
+
+  private aplicarCnaesDaConsulta(
+    estabelecimento: ConsultaCnpj['estabelecimento']
+  ): void {
+    const principal = estabelecimento?.atividade_principal?.id?.trim();
+    const secundarias = (estabelecimento?.atividades_secundarias ?? [])
+      .map((a) => a?.id?.trim())
+      .filter((id): id is string => !!id && id !== principal);
+
+    const codigos = [
+      ...new Set([...(principal ? [principal] : []), ...secundarias]),
+    ];
+    if (codigos.length === 0) {
+      return;
+    }
+
+    this.cnaeService.listar().subscribe({
+      next: (catalogo) => {
+        const mapa = new Map(catalogo.map((c) => [c.subclasse, c]));
+        const ausentes = codigos.filter((codigo) => !mapa.has(codigo));
+
+        const atuais = this.formulario.controls.cnaes.value ?? [];
+        const resultado = atuais.map((c) => ({ ...c, principal: false }));
+
+        for (const codigo of codigos) {
+          if (resultado.some((c) => c.subclasse === codigo)) {
+            continue;
+          }
+          const cnae = mapa.get(codigo);
+          if (!cnae) {
+            continue;
+          }
+          resultado.push({ ...cnae, principal: codigo === principal });
+        }
+
+        if (!resultado.some((c) => c.principal) && resultado.length > 0) {
+          resultado[0] = { ...resultado[0], principal: true };
+        }
+
+        this.formulario.controls.cnaes.setValue(resultado);
+        if (ausentes.length > 0) {
+          this.snackBar.open(
+            `CNAE(s) não encontrado(s) na base: ${ausentes.join(', ')}`,
+            'Fechar',
+            { duration: 5000 }
+          );
+        }
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   private buscarMunicipio(sigla: string, nome: string): Municipio | undefined {
@@ -437,6 +502,7 @@ export class ClienteFormComponent implements OnInit {
       ...valor,
       cpf_cnpj: valor.cpf_cnpj || null,
       segmento_ids: (valor.segmentos ?? []).map((s) => s.id),
+      cnaes: (valor.cnaes ?? []).map((c) => ({ subclasse: c.subclasse, principal: c.principal })),
       observacoes: valor.observacoes || null,
       logradouro: endereco.logradouro || null,
       numero: endereco.numero || null,
