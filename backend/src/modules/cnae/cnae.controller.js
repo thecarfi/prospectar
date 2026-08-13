@@ -2,7 +2,8 @@ const { pool } = require('../../config/db');
 
 async function listar(req, res, next) {
   try {
-    const { busca, secao, divisao } = req.query;
+    const { busca, subclasse, descricao_subclasse, secao, descricao_secao, divisao } =
+      req.query;
     const params = [];
     const condicoes = [];
 
@@ -12,9 +13,21 @@ async function listar(req, res, next) {
         `(subclasse ILIKE $${params.length} OR descricao_subclasse ILIKE $${params.length})`
       );
     }
+    if (subclasse) {
+      params.push(`%${subclasse}%`);
+      condicoes.push(`subclasse ILIKE $${params.length}`);
+    }
+    if (descricao_subclasse) {
+      params.push(`%${descricao_subclasse}%`);
+      condicoes.push(`descricao_subclasse ILIKE $${params.length}`);
+    }
     if (secao) {
       params.push(secao);
       condicoes.push(`secao = $${params.length}`);
+    }
+    if (descricao_secao) {
+      params.push(`%${descricao_secao}%`);
+      condicoes.push(`descricao_secao ILIKE $${params.length}`);
     }
     if (divisao) {
       params.push(divisao);

@@ -13,7 +13,10 @@ router.get(
   '/',
   requirePermission('cnae:ver'),
   query('busca').optional().trim(),
+  query('subclasse').optional().trim(),
+  query('descricao_subclasse').optional().trim(),
   query('secao').optional().trim(),
+  query('descricao_secao').optional().trim(),
   query('divisao').optional().trim(),
   validate,
   cnaeController.listar
