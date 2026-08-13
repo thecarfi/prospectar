@@ -1,11 +1,12 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenavModule, MatSidenavContainer } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { NgIf, NgFor } from '@angular/common';
 import { AuthService } from '../core/services/auth.service';
 
@@ -30,13 +31,14 @@ interface NavItem {
     MatIconModule,
     MatButtonModule,
     MatMenuModule,
+    MatTooltipModule,
   ],
   template: `
     <mat-sidenav-container class="layout-container">
-      <mat-sidenav mode="side" opened class="layout-sidenav">
+      <mat-sidenav mode="side" opened class="layout-sidenav" [class.collapsed]="menuRecolhido">
         <div class="logo">
           <mat-icon>groups</mat-icon>
-          <span>Gestão de Clientes</span>
+          <span *ngIf="!menuRecolhido">Gestão de Clientes</span>
         </div>
         <mat-nav-list>
           <ng-container *ngFor="let item of itensNav">
@@ -44,10 +46,12 @@ interface NavItem {
               mat-list-item
               routerLinkActive="active-link"
               [routerLink]="item.rota"
+              [matTooltip]="menuRecolhido ? item.rotulo : ''"
+              matTooltipPosition="right"
               *ngIf="auth.temAlgumaPermissao(...item.permissoes)"
             >
               <mat-icon matListItemIcon>{{ item.icone }}</mat-icon>
-              <span matListItemTitle>{{ item.rotulo }}</span>
+              <span matListItemTitle *ngIf="!menuRecolhido">{{ item.rotulo }}</span>
             </a>
           </ng-container>
         </mat-nav-list>
@@ -55,6 +59,14 @@ interface NavItem {
 
       <mat-sidenav-content class="layout-content">
         <mat-toolbar color="primary">
+          <button
+            mat-icon-button
+            class="menu-toggle"
+            [matTooltip]="menuRecolhido ? 'Expandir menu' : 'Recolher menu'"
+            (click)="alternarMenu()"
+          >
+            <mat-icon>{{ menuRecolhido ? 'menu_open' : 'menu' }}</mat-icon>
+          </button>
           <span class="toolbar-title">Sistema de Gestão de Clientes</span>
           <span class="spacer"></span>
           <span class="user-info" *ngIf="auth.usuario()">
@@ -85,6 +97,18 @@ interface NavItem {
     .layout-sidenav {
       width: 260px;
       border-right: 1px solid rgba(0, 0, 0, 0.08);
+      transition: width 0.2s ease;
+    }
+    .layout-sidenav.collapsed {
+      width: 64px;
+    }
+    .layout-sidenav.collapsed .logo {
+      justify-content: center;
+      padding: 18px 0;
+    }
+    .layout-sidenav.collapsed ::ng-deep .mdc-list-item {
+      padding: 0;
+      justify-content: center;
     }
     .logo {
       display: flex;
@@ -93,6 +117,7 @@ interface NavItem {
       padding: 18px 16px;
       font-weight: 500;
       color: var(--mat-sidenav-content-text-color, #333);
+      white-space: nowrap;
     }
     .logo mat-icon {
       color: #3f51b5;
@@ -104,6 +129,9 @@ interface NavItem {
       display: flex;
       flex-direction: column;
       height: 100vh;
+    }
+    .menu-toggle {
+      margin-right: 8px;
     }
     .toolbar-title {
       font-size: 18px;
@@ -133,6 +161,13 @@ export class LayoutComponent {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
+  @ViewChild(MatSidenavContainer) private sidenavContainer?: MatSidenavContainer;
+
+  private static readonly MENU_KEY = 'menu-recolhido';
+  private static readonly DURACAO_TRANSICAO_MS = 220;
+
+  menuRecolhido = typeof localStorage !== 'undefined' && localStorage.getItem(LayoutComponent.MENU_KEY) === 'true';
+
   readonly itensNav: NavItem[] = [
     { rotulo: 'Dashboard', rota: '/dashboard', icone: 'dashboard', permissoes: ['clientes:ver'] },
     { rotulo: 'Clientes', rota: '/clientes', icone: 'groups', permissoes: ['clientes:ver'] },
@@ -140,6 +175,27 @@ export class LayoutComponent {
     { rotulo: 'Permissões', rota: '/permissoes', icone: 'admin_panel_settings', permissoes: ['permissoes:ver'] },
     { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissoes: ['configuracao:ver'] },
   ];
+
+  alternarMenu(): void {
+    this.menuRecolhido = !this.menuRecolhido;
+    localStorage.setItem(LayoutComponent.MENU_KEY, String(this.menuRecolhido));
+    this.sincronizarMargemDoConteudo();
+  }
+
+  private sincronizarMargemDoConteudo(): void {
+    const container = this.sidenavContainer;
+    if (!container || typeof requestAnimationFrame === 'undefined') {
+      return;
+    }
+    const inicio = performance.now();
+    const passo = (): void => {
+      container.updateContentMargins();
+      if (performance.now() - inicio < LayoutComponent.DURACAO_TRANSICAO_MS) {
+        requestAnimationFrame(passo);
+      }
+    };
+    requestAnimationFrame(passo);
+  }
 
   sair(): void {
     this.auth.logout();
