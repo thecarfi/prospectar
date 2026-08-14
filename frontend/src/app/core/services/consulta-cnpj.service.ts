@@ -33,6 +33,10 @@ export interface ConsultaCnpj {
     bairro?: string;
     cep?: string;
     email?: string;
+    ddd1?: string;
+    ddd2?: string;
+    telefone1?: string;
+    telefone2?: string;
     estado?: { id?: number; nome?: string; sigla?: string; ibge_id?: number };
     cidade?: { id?: number; nome?: string; ibge_id?: number; siafi_id?: string };
     atividade_principal?: { id?: string; descricao?: string };

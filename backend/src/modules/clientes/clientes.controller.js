@@ -95,6 +95,32 @@ async function validarCnaes(cnaes) {
   return lista;
 }
 
+function normalizarContatos(contatos) {
+  if (!Array.isArray(contatos) || contatos.length === 0) {
+    return [];
+  }
+
+  const resultado = [];
+  for (const c of contatos) {
+    const nome = String(c.nome ?? '').trim();
+    const email = String(c.email ?? '').trim() || null;
+    const telefone = String(c.telefone ?? '').trim() || null;
+    const cargo = String(c.cargo ?? '').trim() || null;
+
+    if (!nome && !email && !telefone && !cargo) {
+      continue;
+    }
+
+    resultado.push({
+      nome: nome || (telefone ? 'Telefone' : email ? 'E-mail' : 'Contato'),
+      email,
+      telefone,
+      cargo,
+    });
+  }
+  return resultado;
+}
+
 async function listar(req, res, next) {
   try {
     const {
@@ -315,6 +341,7 @@ async function criar(req, res, next) {
       cep,
       municipio_id,
       cnaes,
+      contatos,
     } = req.body;
 
     const enderecoInformado = enderecoPreenchido(logradouro, municipio_id);
@@ -323,6 +350,7 @@ async function criar(req, res, next) {
     }
 
     const cnaesNorm = await validarCnaes(cnaes);
+    const contatosNorm = normalizarContatos(contatos);
 
     if (formatarCnpj(cpf_cnpj)) {
       const existente = await verificarCnpjExistente(cpf_cnpj);
@@ -373,6 +401,14 @@ async function criar(req, res, next) {
           `INSERT INTO cliente_cnae (cliente_id, subclasse, principal)
            VALUES ($1, $2, $3)`,
           [rows[0].id, c.subclasse, c.principal]
+        );
+      }
+
+      for (const contato of contatosNorm) {
+        await client.query(
+          `INSERT INTO contatos (cliente_id, nome, email, telefone, cargo)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [rows[0].id, contato.nome, contato.email, contato.telefone, contato.cargo]
         );
       }
 
@@ -623,6 +659,7 @@ async function atualizar(req, res, next) {
     cep,
     municipio_id,
     cnaes,
+    contatos,
   } = req.body;
 
   try {
@@ -642,6 +679,8 @@ async function atualizar(req, res, next) {
 
     const cnaesInformado = 'cnaes' in req.body;
     const cnaesNorm = cnaesInformado ? await validarCnaes(cnaes) : [];
+    const contatosInformado = 'contatos' in req.body;
+    const contatosNorm = contatosInformado ? normalizarContatos(contatos) : [];
 
     const secaoEndereco =
       'logradouro' in req.body || 'municipio_id' in req.body;
@@ -702,6 +741,20 @@ async function atualizar(req, res, next) {
             `INSERT INTO cliente_cnae (cliente_id, subclasse, principal)
              VALUES ($1, $2, $3)`,
             [id, c.subclasse, c.principal]
+          );
+        }
+      }
+
+      if (contatosInformado) {
+        await client.query(
+          'DELETE FROM contatos WHERE cliente_id = $1',
+          [id]
+        );
+        for (const contato of contatosNorm) {
+          await client.query(
+            `INSERT INTO contatos (cliente_id, nome, email, telefone, cargo)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [id, contato.nome, contato.email, contato.telefone, contato.cargo]
           );
         }
       }

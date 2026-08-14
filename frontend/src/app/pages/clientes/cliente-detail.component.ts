@@ -420,7 +420,7 @@ export class ClienteDetailComponent implements OnInit {
     });
     ref.afterClosed().subscribe((dados) => {
       if (!dados) return;
-      this.contatosService.atualizar(this.clienteId, contato.id, dados).subscribe({
+      this.contatosService.atualizar(this.clienteId, contato.id!, dados).subscribe({
         next: () => {
           this.snackBar.open('Contato atualizado.', 'Fechar', { duration: 3000 });
           this.carregar();
@@ -434,7 +434,7 @@ export class ClienteDetailComponent implements OnInit {
       'Excluir contato',
       `Deseja excluir o contato "${contato.nome}"?`,
       () =>
-        this.contatosService.excluir(this.clienteId, contato.id).subscribe({
+        this.contatosService.excluir(this.clienteId, contato.id!).subscribe({
           next: () => this.carregar(),
         })
     );

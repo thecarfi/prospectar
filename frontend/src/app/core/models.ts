@@ -136,7 +136,7 @@ export interface EstatisticasCliente {
 }
 
 export interface Contato {
-  id: number;
+  id?: number;
   cliente_id?: number;
   nome: string;
   email?: string;

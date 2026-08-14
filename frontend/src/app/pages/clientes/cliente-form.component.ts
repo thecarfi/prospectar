@@ -21,10 +21,11 @@ import { ClientesService } from '../../core/services/clientes.service';
 import { StatusClientesService } from '../../core/services/status-clientes.service';
 import { ConsultaCnpjService, ConsultaCnpj } from '../../core/services/consulta-cnpj.service';
 import { LocalizacaoService } from '../../core/services/localizacao.service';
-import { Cliente, ClienteCnae, Municipio, Segmento, StatusCliente } from '../../core/models';
+import { Cliente, ClienteCnae, Contato, Municipio, Segmento, StatusCliente } from '../../core/models';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 import { SeletorSegmentosComponent } from '../../shared/seletor-segmentos.component';
 import { SeletorCnaeComponent } from '../../shared/seletor-cnae.component';
+import { SeletorContatosComponent } from '../../shared/seletor-contatos.component';
 import { CnaeService } from '../../core/services/cnae.service';
 
 export function validarDocumento(
@@ -76,6 +77,7 @@ export function validarEndereco(
     SeletorMunicipioComponent,
     SeletorSegmentosComponent,
     SeletorCnaeComponent,
+    SeletorContatosComponent,
   ],
   template: `
     <div class="header">
@@ -159,6 +161,11 @@ export function validarEndereco(
               <div class="endereco-error">Informe o logradouro e o município do endereço.</div>
             }
           </div>
+
+          <app-seletor-contatos
+            class="full"
+            [control]="formulario.controls.contatos"
+          ></app-seletor-contatos>
 
           <app-seletor-cnae
             class="full"
@@ -248,6 +255,7 @@ export class ClienteFormComponent implements OnInit {
     status_id: [null as number | null, Validators.required],
     segmentos: this.fb.control<Segmento[]>([]),
     cnaes: this.fb.control<ClienteCnae[]>([]),
+    contatos: this.fb.control<Contato[]>([]),
     observacoes: [''],
     endereco: this.fb.nonNullable.group(
       {
@@ -292,6 +300,7 @@ export class ClienteFormComponent implements OnInit {
           status_id: cliente.status_id ?? null,
           segmentos: cliente.segmentos || [],
           cnaes: cliente.cnaes || [],
+          contatos: cliente.contatos || [],
           observacoes: cliente.observacoes || '',
           endereco: {
             logradouro: principal?.logradouro || '',
@@ -403,7 +412,72 @@ export class ClienteFormComponent implements OnInit {
 
     this.aplicarCnaesDaConsulta(estabelecimento);
 
+    this.aplicarContatosDaConsulta(estabelecimento);
+
     this.cdr.markForCheck();
+  }
+
+  private aplicarContatosDaConsulta(
+    estabelecimento: ConsultaCnpj['estabelecimento']
+  ): void {
+    const novos: Contato[] = [];
+
+    if (estabelecimento?.ddd1 && estabelecimento?.telefone1) {
+      novos.push({
+        nome: 'Telefone 1',
+        telefone: `${estabelecimento.ddd1}-${estabelecimento.telefone1}`,
+      });
+    }
+    if (estabelecimento?.ddd2 && estabelecimento?.telefone2) {
+      novos.push({
+        nome: 'Telefone 2',
+        telefone: `${estabelecimento.ddd2}-${estabelecimento.telefone2}`,
+      });
+    }
+    if (estabelecimento?.email) {
+      novos.push({ nome: 'E-mail', email: estabelecimento.email });
+    }
+
+    if (novos.length === 0) {
+      return;
+    }
+
+    const atuais = this.formulario.controls.contatos.value ?? [];
+    const telefonesExistentes = new Set(
+      atuais
+        .map((c) => c.telefone ?? '')
+        .filter((t) => t.replace(/\D/g, '').length > 0)
+        .map((t) => t.replace(/\D/g, ''))
+    );
+    const emailsExistentes = new Set(
+      atuais
+        .map((c) => (c.email ?? '').toLowerCase().trim())
+        .filter((e) => !!e)
+    );
+
+    const aAdicionar = novos.filter((contato) => {
+      if (contato.telefone) {
+        const digitos = contato.telefone.replace(/\D/g, '');
+        if (telefonesExistentes.has(digitos)) {
+          return false;
+        }
+        telefonesExistentes.add(digitos);
+        return true;
+      }
+      if (contato.email) {
+        const chave = contato.email.toLowerCase().trim();
+        if (emailsExistentes.has(chave)) {
+          return false;
+        }
+        emailsExistentes.add(chave);
+        return true;
+      }
+      return false;
+    });
+
+    if (aAdicionar.length > 0) {
+      this.formulario.controls.contatos.setValue([...atuais, ...aAdicionar]);
+    }
   }
 
   private aplicarCnaesDaConsulta(
@@ -503,6 +577,12 @@ export class ClienteFormComponent implements OnInit {
       cpf_cnpj: valor.cpf_cnpj || null,
       segmento_ids: (valor.segmentos ?? []).map((s) => s.id),
       cnaes: (valor.cnaes ?? []).map((c) => ({ subclasse: c.subclasse, principal: c.principal })),
+      contatos: (valor.contatos ?? []).map((c) => ({
+        nome: c.nome,
+        email: c.email || null,
+        telefone: c.telefone || null,
+        cargo: c.cargo || null,
+      })),
       observacoes: valor.observacoes || null,
       logradouro: endereco.logradouro || null,
       numero: endereco.numero || null,

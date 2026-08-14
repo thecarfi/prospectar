@@ -49,6 +49,11 @@ router.post(
   body('cnaes').optional().isArray().withMessage('CNAEs inválidos'),
   body('cnaes.*.subclasse').optional().isString().withMessage('Subclasse CNAE inválida'),
   body('cnaes.*.principal').optional().isBoolean().withMessage('Indicador principal inválido'),
+  body('contatos').optional().isArray().withMessage('Contatos inválidos'),
+  body('contatos.*.nome').optional().trim(),
+  body('contatos.*.email').optional().trim(),
+  body('contatos.*.telefone').optional().trim(),
+  body('contatos.*.cargo').optional().trim(),
   body('status_id').optional().isInt().withMessage('Status inválido'),
   validate,
   clientesController.criar
@@ -87,6 +92,11 @@ router.put(
   body('cnaes').optional().isArray().withMessage('CNAEs inválidos'),
   body('cnaes.*.subclasse').optional().isString().withMessage('Subclasse CNAE inválida'),
   body('cnaes.*.principal').optional().isBoolean().withMessage('Indicador principal inválido'),
+  body('contatos').optional().isArray().withMessage('Contatos inválidos'),
+  body('contatos.*.nome').optional().trim(),
+  body('contatos.*.email').optional().trim(),
+  body('contatos.*.telefone').optional().trim(),
+  body('contatos.*.cargo').optional().trim(),
   body('status_id').optional().isInt().withMessage('Status inválido'),
   validate,
   clientesController.atualizar
