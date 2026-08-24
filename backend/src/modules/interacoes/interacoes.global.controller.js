@@ -115,14 +115,54 @@ async function filtros(req, res, next) {
   }
 }
 
+function podeCriarClientes(usuario) {
+  return (
+    usuario.papel === 'admin' ||
+    usuario.permissoes.includes('*') ||
+    usuario.permissoes.includes('clientes:criar')
+  );
+}
+
+async function criarClientePorNome(client, nome, usuarioId) {
+  const { rows: status } = await client.query(
+    'SELECT id FROM status_clientes ORDER BY id LIMIT 1'
+  );
+  const { rows } = await client.query(
+    `INSERT INTO clientes (nome, status_id, criado_por)
+     VALUES ($1, $2, $3)
+     RETURNING id`,
+    [nome, status[0] ? status[0].id : null, usuarioId]
+  );
+  return rows[0].id;
+}
+
 async function criar(req, res, next) {
+  const client = await pool.connect();
   try {
-    const { cliente_id, tipo = 'anotacao', assunto, descricao, ocorreu_em } =
-      req.body;
+    const { tipo = 'anotacao', assunto, descricao, ocorreu_em } = req.body;
+    let { cliente_id, cliente_nome } = req.body;
 
-    await validarCliente(cliente_id);
+    if (cliente_nome != null && String(cliente_nome).trim()) {
+      if (!podeCriarClientes(req.user)) {
+        throw new ApiError(403, 'Permissão necessária: clientes:criar');
+      }
+      cliente_id = null;
+    } else {
+      cliente_nome = null;
+      await validarCliente(cliente_id);
+    }
 
-    const { rows } = await pool.query(
+    await client.query('BEGIN');
+
+    if (!cliente_id) {
+      cliente_id = await criarClientePorNome(
+        client,
+        String(cliente_nome).trim(),
+        req.user.id
+      );
+    }
+
+    const { rows } = await client.query(
       `INSERT INTO interacoes (cliente_id, tipo, assunto, descricao, ocorreu_em, criado_por)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, cliente_id, tipo, assunto, descricao, ocorreu_em, criado_por, criado_em`,
@@ -136,9 +176,14 @@ async function criar(req, res, next) {
       ]
     );
 
+    await client.query('COMMIT');
+
     res.status(201).json(rows[0]);
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     next(err);
+  } finally {
+    client.release();
   }
 }
 

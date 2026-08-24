@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { AuthService } from '../core/services/auth.service';
 import { ClientesService } from '../core/services/clientes.service';
 import { Cliente, Interacao } from '../core/models';
 
@@ -19,6 +20,13 @@ export interface InteracaoDialogData {
   interacao?: Interacao | null;
   selecionarCliente?: boolean;
 }
+
+interface OpcaoNovoCliente {
+  id: null;
+  nome: string;
+}
+
+type OpcaoCliente = Cliente | OpcaoNovoCliente;
 
 @Component({
   selector: 'app-interacao-dialog',
@@ -45,11 +53,15 @@ export interface InteracaoDialogData {
             [matAutocomplete]="auto"
             placeholder="Digite o nome do cliente"
           />
+          <mat-hint *ngIf="dicaCliente">{{ dicaCliente }}</mat-hint>
           <mat-autocomplete
             #auto="matAutocomplete"
             [displayWith]="exibirCliente"
-            (optionSelected)="aoSelecionarCliente($event.option.value)"
+            (optionSelected)="aoSelecionarOpcao($event.option.value)"
           >
+            <mat-option *ngIf="mostrarCriarNovo" [value]="opcaoNovoCliente">
+              Cadastrar novo cliente: "{{ textoCliente }}"
+            </mat-option>
             <mat-option *ngFor="let cliente of clientesOpcoes" [value]="cliente">
               {{ cliente.nome }}
             </mat-option>
@@ -83,7 +95,7 @@ export interface InteracaoDialogData {
       <button
         mat-flat-button
         color="primary"
-        [disabled]="formulario.invalid || (selecionarCliente && !clienteSelecionado)"
+        [disabled]="formulario.invalid || !podeSalvar"
         (click)="salvar()"
       >
         Salvar
@@ -102,6 +114,7 @@ export interface InteracaoDialogData {
 export class InteracaoDialogComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<InteracaoDialogComponent>);
+  private readonly auth = inject(AuthService);
   private readonly clientesService = inject(ClientesService);
 
   readonly data = inject<InteracaoDialogData>(MAT_DIALOG_DATA);
@@ -109,13 +122,15 @@ export class InteracaoDialogComponent implements OnInit {
   readonly interacao: Interacao | null = this.data?.interacao ?? null;
   readonly selecionarCliente: boolean =
     !!this.data?.selecionarCliente && !this.interacao;
+  readonly podeCriarCliente = this.auth.temPermissao('clientes:criar');
 
-  readonly clienteControl = new FormControl<string | Cliente>('', {
+  readonly clienteControl = new FormControl<string | OpcaoCliente>('', {
     nonNullable: true,
     validators: Validators.required,
   });
   clientesOpcoes: Cliente[] = [];
   clienteSelecionado: Cliente | null = null;
+  nomeNovoCliente: string | null = null;
 
   readonly formulario = this.fb.nonNullable.group({
     tipo: ['anotacao' as string],
@@ -152,36 +167,126 @@ export class InteracaoDialogComponent implements OnInit {
       .subscribe((valor) => {
         if (typeof valor === 'string') {
           this.clienteSelecionado = null;
+          this.nomeNovoCliente = null;
           this.carregarOpcoes(valor);
         }
       });
     this.carregarOpcoes('');
   }
 
-  aoSelecionarCliente(cliente: Cliente): void {
-    this.clienteSelecionado = cliente;
-    this.clienteControl.setValue(cliente, { emitEvent: false });
+  get textoCliente(): string {
+    const valor = this.clienteControl.value;
+    return typeof valor === 'string' ? valor.trim() : '';
   }
 
-  exibirCliente(valor: Cliente | string | null): string {
-    return typeof valor === 'string' ? valor : (valor?.nome ?? '');
+  get mostrarCriarNovo(): boolean {
+    if (!this.selecionarCliente || !this.podeCriarCliente) {
+      return false;
+    }
+    const texto = this.textoCliente;
+    if (texto.length < 2) {
+      return false;
+    }
+    if ((this.nomeNovoCliente ?? '').toLowerCase() === texto.toLowerCase()) {
+      return false;
+    }
+    return !this.temCorrespondenciaExata(texto);
+  }
+
+  get opcaoNovoCliente(): OpcaoNovoCliente {
+    return { id: null, nome: this.textoCliente };
+  }
+
+  get podeSalvar(): boolean {
+    if (!this.selecionarCliente) {
+      return true;
+    }
+    return (
+      !!this.clienteSelecionado ||
+      (!!this.nomeNovoCliente && this.nomeNovoCliente.trim().length >= 2)
+    );
+  }
+
+  get dicaCliente(): string | null {
+    if (!this.selecionarCliente) {
+      return null;
+    }
+    if (this.nomeNovoCliente) {
+      return `Novo cliente "${this.nomeNovoCliente}" será criado ao salvar.`;
+    }
+    const texto = this.textoCliente;
+    if (texto.length >= 2 && !this.temCorrespondenciaExata(texto)) {
+      return this.podeCriarCliente
+        ? 'Selecione "Cadastrar novo cliente" na lista para criar.'
+        : 'Nenhum cliente encontrado para este nome.';
+    }
+    return null;
+  }
+
+  aoSelecionarOpcao(valor: OpcaoCliente | null): void {
+    if (valor !== null && valor.id === null) {
+      const nome = valor.nome.trim();
+      if (nome.length < 2) {
+        return;
+      }
+      this.nomeNovoCliente = nome;
+      this.clienteSelecionado = null;
+      this.clienteControl.setValue(nome, { emitEvent: false });
+      return;
+    }
+    this.clienteSelecionado = valor as Cliente;
+    this.nomeNovoCliente = null;
+    this.clienteControl.setValue(valor as Cliente, { emitEvent: false });
+  }
+
+  exibirCliente(valor: OpcaoCliente | string | null): string {
+    if (valor && typeof valor === 'object') {
+      return valor.nome ?? '';
+    }
+    return typeof valor === 'string' ? valor : '';
   }
 
   salvar(): void {
     if (this.formulario.invalid) return;
-    if (this.selecionarCliente && !this.clienteSelecionado) return;
+    if (!this.podeSalvar) return;
     const valor = this.formulario.getRawValue();
-    this.dialogRef.close({
-      ...(this.selecionarCliente && this.clienteSelecionado
-        ? { cliente_id: this.clienteSelecionado.id }
-        : {}),
+    const dados = {
       tipo: valor.tipo,
       assunto: valor.assunto,
       descricao: valor.descricao || null,
       ocorreu_em: valor.ocorreu_em
         ? new Date(valor.ocorreu_em).toISOString()
         : undefined,
+    };
+
+    if (this.clienteSelecionado) {
+      this.dialogRef.close({ ...dados, cliente_id: this.clienteSelecionado.id });
+      return;
+    }
+
+    const nome = (this.nomeNovoCliente ?? '').trim();
+    this.clientesService.listar({ busca: nome, limite: 50 }).subscribe({
+      next: (res) => {
+        const existente = res.dados.find(
+          (c) => c.nome.trim().toLowerCase() === nome.toLowerCase()
+        );
+        this.dialogRef.close(
+          existente
+            ? { ...dados, cliente_id: existente.id }
+            : { ...dados, cliente_nome: nome }
+        );
+      },
+      error: () => {
+        this.dialogRef.close({ ...dados, cliente_nome: nome });
+      },
     });
+  }
+
+  private temCorrespondenciaExata(nome: string): boolean {
+    const n = nome.trim().toLowerCase();
+    return this.clientesOpcoes.some(
+      (c) => c.nome.trim().toLowerCase() === n
+    );
   }
 
   private carregarOpcoes(termo: string): void {

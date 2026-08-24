@@ -69,7 +69,8 @@ export class InteracoesService {
   }
 
   criarGlobal(
-    interacao: Partial<Interacao> & { cliente_id: number }
+    interacao: Partial<Interacao> &
+      ({ cliente_id: number } | { cliente_nome: string })
   ): Observable<Interacao> {
     return this.http.post<Interacao>('/api/interacoes', interacao);
   }

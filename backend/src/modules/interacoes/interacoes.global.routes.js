@@ -30,7 +30,20 @@ router.get(
 router.post(
   '/',
   requirePermission('interacoes:criar'),
-  body('cliente_id').isInt().withMessage('Cliente obrigatório'),
+  body('cliente_id').optional({ nullable: true }).isInt().withMessage('Cliente inválido'),
+  body('cliente_nome')
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ min: 2, max: 160 })
+    .withMessage('Nome do cliente deve ter entre 2 e 160 caracteres'),
+  body().custom((valor) => {
+    const temId = valor.cliente_id != null;
+    const temNome = !!(valor.cliente_nome && String(valor.cliente_nome).trim());
+    if (temId === temNome) {
+      throw new Error('Informe o cliente existente ou o nome de um novo cliente');
+    }
+    return true;
+  }),
   body('assunto').trim().notEmpty().withMessage('Assunto obrigatório'),
   body('tipo').optional().isIn(TIPOS_VALIDOS).withMessage('Tipo inválido'),
   validate,
