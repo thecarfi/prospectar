@@ -27,6 +27,7 @@ import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
 import { InteracaoDialogComponent } from '../../shared/interacao-dialog.component';
+import { VisualizarInteracaoDialogComponent } from '../../shared/visualizar-interacao-dialog.component';
 
 @Component({
   selector: 'app-cliente-detail',
@@ -229,6 +230,9 @@ import { InteracaoDialogComponent } from '../../shared/interacao-dialog.componen
               <ng-container matColumnDef="acoes">
                 <th mat-header-cell *matHeaderCellDef></th>
                 <td mat-cell *matCellDef="let interacao" class="acoes-cell">
+                  <button mat-icon-button (click)="visualizarInteracao(interacao)" appPermissao="interacoes:ver" matTooltip="Visualizar">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
                   <button mat-icon-button (click)="editarInteracao(interacao)" appPermissao="interacoes:editar">
                     <mat-icon>edit</mat-icon>
                   </button>
@@ -494,6 +498,13 @@ export class ClienteDetailComponent implements OnInit {
           this.carregar();
         },
       });
+    });
+  }
+
+  visualizarInteracao(interacao: Interacao): void {
+    this.dialog.open(VisualizarInteracaoDialogComponent, {
+      width: '560px',
+      data: { interacao },
     });
   }
 

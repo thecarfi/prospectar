@@ -24,6 +24,7 @@ import {
   InteracaoDialogComponent,
   InteracaoDialogData,
 } from '../../shared/interacao-dialog.component';
+import { VisualizarInteracaoDialogComponent } from '../../shared/visualizar-interacao-dialog.component';
 
 @Component({
   selector: 'app-interacoes-list',
@@ -140,6 +141,14 @@ import {
           <ng-container matColumnDef="acoes">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let interacao" class="acoes-cell">
+              <button
+                mat-icon-button
+                appPermissao="interacoes:ver"
+                matTooltip="Visualizar"
+                (click)="visualizarInteracao(interacao)"
+              >
+                <mat-icon>visibility</mat-icon>
+              </button>
               <button
                 mat-icon-button
                 appPermissao="interacoes:editar"
@@ -296,6 +305,13 @@ export class InteracoesListComponent implements OnInit {
           this.carregar();
         },
       });
+    });
+  }
+
+  visualizarInteracao(interacao: Interacao): void {
+    this.dialog.open(VisualizarInteracaoDialogComponent, {
+      width: '560px',
+      data: { interacao },
     });
   }
 
