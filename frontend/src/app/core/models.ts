@@ -101,6 +101,7 @@ export interface Cliente {
   status_descricao?: string;
   status_cor?: string;
   observacoes?: string;
+  json_coletado?: Record<string, unknown> | null;
   criado_por?: number;
   criado_em?: string;
   atualizado_em?: string;

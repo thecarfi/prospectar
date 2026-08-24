@@ -275,6 +275,7 @@ export class ClienteFormComponent implements OnInit {
   editando = false;
   salvando = false;
   consultando = false;
+  jsonColetado: Record<string, unknown> | null = null;
   private clienteId: number | null = null;
 
   ngOnInit(): void {
@@ -294,6 +295,7 @@ export class ClienteFormComponent implements OnInit {
       this.clienteId = Number(id);
       this.clientesService.detalhar(this.clienteId).subscribe((cliente) => {
         const principal = cliente.endereco_principal;
+        this.jsonColetado = cliente.json_coletado || null;
         this.formulario.patchValue({
           nome: cliente.nome,
           cpf_cnpj: cliente.cpf_cnpj || '',
@@ -360,6 +362,7 @@ export class ClienteFormComponent implements OnInit {
           });
           return;
         }
+        this.jsonColetado = resposta as unknown as Record<string, unknown>;
         this.aplicarDadosConsulta(resposta);
       },
       error: (erro) => {
@@ -584,6 +587,7 @@ export class ClienteFormComponent implements OnInit {
         cargo: c.cargo || null,
       })),
       observacoes: valor.observacoes || null,
+      json_coletado: this.jsonColetado || null,
       logradouro: endereco.logradouro || null,
       numero: endereco.numero || null,
       complemento: endereco.complemento || null,

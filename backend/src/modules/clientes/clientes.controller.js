@@ -193,7 +193,7 @@ async function listar(req, res, next) {
       `SELECT c.id, c.nome, c.cpf_cnpj,
               c.status_id, st.nome AS status_nome, st.descricao AS status_descricao, st.cor AS status_cor,
               ce.municipio_id, m.nome AS municipio_nome, est.sigla AS municipio_uf,
-              c.observacoes, c.criado_por, c.criado_em, c.atualizado_em,
+              c.observacoes, c.json_coletado, c.criado_por, c.criado_em, c.atualizado_em,
               COALESCE((SELECT string_agg(s.nome, ', ' ORDER BY s.nome)
                           FROM cliente_segmentos cs
                           JOIN segmentos s ON s.id = cs.segmento_id
@@ -245,7 +245,7 @@ async function detalhar(req, res, next) {
       `SELECT c.id, c.nome, c.cpf_cnpj,
               c.status_id, st.nome AS status_nome, st.descricao AS status_descricao, st.cor AS status_cor,
               ce.municipio_id, m.nome AS municipio_nome, est.sigla AS municipio_uf,
-              c.observacoes, c.criado_por, c.criado_em, c.atualizado_em
+              c.observacoes, c.json_coletado, c.criado_por, c.criado_em, c.atualizado_em
          FROM clientes c
          ${ENDERECO_PRINCIPAL_LATERAL}
          LEFT JOIN status_clientes st ON st.id = c.status_id
@@ -334,6 +334,7 @@ async function criar(req, res, next) {
       segmento_ids,
       status_id,
       observacoes,
+      json_coletado,
       logradouro,
       numero,
       complemento,
@@ -380,11 +381,11 @@ async function criar(req, res, next) {
       await client.query('BEGIN');
 
       const { rows } = await client.query(
-        `INSERT INTO clientes (nome, cpf_cnpj, status_id, observacoes, criado_por)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO clientes (nome, cpf_cnpj, status_id, observacoes, json_coletado, criado_por)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, nome, cpf_cnpj, status_id,
-                   observacoes, criado_por, criado_em, atualizado_em`,
-        [nome, formatarCnpj(cpf_cnpj), statusFinal, observacoes || null, req.user.id]
+                   observacoes, json_coletado, criado_por, criado_em, atualizado_em`,
+        [nome, formatarCnpj(cpf_cnpj), statusFinal, observacoes || null, json_coletado || null, req.user.id]
       );
 
       if (Array.isArray(segmento_ids) && segmento_ids.length > 0) {
@@ -652,6 +653,7 @@ async function atualizar(req, res, next) {
     segmento_ids,
     status_id,
     observacoes,
+    json_coletado,
     logradouro,
     numero,
     complemento,
@@ -708,11 +710,12 @@ async function atualizar(req, res, next) {
                 cpf_cnpj = COALESCE($2, cpf_cnpj),
                 status_id = COALESCE($3, status_id),
                 observacoes = COALESCE($4, observacoes),
+                json_coletado = COALESCE($5, json_coletado),
                 atualizado_em = NOW()
-          WHERE id = $5
+          WHERE id = $6
           RETURNING id, nome, cpf_cnpj, status_id,
-                    observacoes, criado_por, criado_em, atualizado_em`,
-        [nome ?? null, formatarCnpj(cpf_cnpj), status_id ?? null, observacoes ?? null, id]
+                    observacoes, json_coletado, criado_por, criado_em, atualizado_em`,
+        [nome ?? null, formatarCnpj(cpf_cnpj), status_id ?? null, observacoes ?? null, json_coletado || null, id]
       );
 
       if ('segmento_ids' in req.body) {

@@ -55,6 +55,7 @@ router.post(
   body('contatos.*.telefone').optional().trim(),
   body('contatos.*.cargo').optional().trim(),
   body('status_id').optional().isInt().withMessage('Status inválido'),
+  body('json_coletado').optional({ nullable: true }).custom(v => v === null || typeof v === 'object').withMessage('json_coletado inválido'),
   validate,
   clientesController.criar
 );
@@ -98,6 +99,7 @@ router.put(
   body('contatos.*.telefone').optional().trim(),
   body('contatos.*.cargo').optional().trim(),
   body('status_id').optional().isInt().withMessage('Status inválido'),
+  body('json_coletado').optional({ nullable: true }).custom(v => v === null || typeof v === 'object').withMessage('json_coletado inválido'),
   validate,
   clientesController.atualizar
 );
