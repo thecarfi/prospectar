@@ -162,6 +162,7 @@ export interface Endereco {
 export interface Interacao {
   id: number;
   cliente_id?: number;
+  cliente_nome?: string;
   tipo: 'ligacao' | 'visita' | 'anotacao' | 'mensagem';
   assunto: string;
   descricao?: string;
@@ -169,4 +170,19 @@ export interface Interacao {
   criado_por?: number;
   criado_por_nome?: string;
   criado_em?: string;
+}
+
+export interface InteracaoFiltros {
+  cliente_nome?: string;
+  criado_por?: number;
+  tipo?: string;
+  data_inicio?: string;
+  data_fim?: string;
+  pagina?: number;
+  limite?: number;
+}
+
+export interface InteracoesFiltrosMeta {
+  usuarios: { id: number; nome: string }[];
+  tipos: string[];
 }

@@ -26,6 +26,7 @@ import { ClienteDetalhe, Contato, Endereco, Interacao, Segmento, Cnae, ClienteCn
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { SeletorMunicipioComponent } from '../../shared/seletor-municipio.component';
+import { InteracaoDialogComponent } from '../../shared/interacao-dialog.component';
 
 @Component({
   selector: 'app-cliente-detail',
@@ -481,7 +482,10 @@ export class ClienteDetailComponent implements OnInit {
   }
 
   novaInteracao(): void {
-    const ref = this.dialog.open(InteracaoDialogComponent, { width: '560px' });
+    const ref = this.dialog.open(InteracaoDialogComponent, {
+      width: '560px',
+      data: {},
+    });
     ref.afterClosed().subscribe((dados) => {
       if (!dados) return;
       this.interacoesService.criar(this.clienteId, dados).subscribe({
@@ -496,7 +500,7 @@ export class ClienteDetailComponent implements OnInit {
   editarInteracao(interacao: Interacao): void {
     const ref = this.dialog.open(InteracaoDialogComponent, {
       width: '560px',
-      data: interacao,
+      data: { interacao },
     });
     ref.afterClosed().subscribe((dados) => {
       if (!dados) return;
@@ -794,97 +798,6 @@ export class EnderecoDialogComponent {
       bairro: valor.bairro || null,
       cep: valor.cep || null,
     });
-  }
-}
-
-@Component({
-  selector: 'app-interacao-dialog',
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-  ],
-  template: `
-    <h2 mat-dialog-title>{{ dados ? 'Editar interação' : 'Nova interação' }}</h2>
-    <mat-dialog-content>
-      <form [formGroup]="formulario" class="dialog-form">
-        <mat-form-field appearance="outline">
-          <mat-label>Tipo</mat-label>
-          <mat-select formControlName="tipo">
-            <mat-option value="ligacao">Ligação</mat-option>
-            <mat-option value="visita">Visita</mat-option>
-            <mat-option value="anotacao">Anotação</mat-option>
-            <mat-option value="mensagem">Mensagem</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Assunto *</mat-label>
-          <input matInput formControlName="assunto" />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Descrição</mat-label>
-          <textarea matInput formControlName="descricao" rows="4"></textarea>
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Data da interação</mat-label>
-          <input matInput formControlName="ocorreu_em" type="datetime-local" />
-        </mat-form-field>
-      </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" [disabled]="formulario.invalid" (click)="salvar()">Salvar</button>
-    </mat-dialog-actions>
-  `,
-  styles: `
-    .dialog-form {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding-top: 8px;
-    }
-  `,
-})
-export class InteracaoDialogComponent {
-  private readonly fb = inject(FormBuilder);
-  private readonly dialogRef = inject(MatDialogRef<InteracaoDialogComponent>);
-
-  readonly formulario = this.fb.nonNullable.group({
-    tipo: ['anotacao' as string],
-    assunto: ['', Validators.required],
-    descricao: [''],
-    ocorreu_em: [''],
-  });
-
-  constructor(@Inject(MAT_DIALOG_DATA) public readonly dados: Interacao | null) {
-    if (dados) {
-      this.formulario.patchValue({
-        tipo: dados.tipo,
-        assunto: dados.assunto,
-        descricao: dados.descricao || '',
-        ocorreu_em: dados.ocorreu_em ? this.paraInputLocal(dados.ocorreu_em) : '',
-      });
-    }
-  }
-
-  salvar(): void {
-    if (this.formulario.invalid) return;
-    const valor = this.formulario.getRawValue();
-    this.dialogRef.close({
-      tipo: valor.tipo,
-      assunto: valor.assunto,
-      descricao: valor.descricao || null,
-      ocorreu_em: valor.ocorreu_em ? new Date(valor.ocorreu_em).toISOString() : undefined,
-    });
-  }
-
-  private paraInputLocal(iso: string): string {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 }
 

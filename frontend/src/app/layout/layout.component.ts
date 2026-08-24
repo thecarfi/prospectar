@@ -198,6 +198,7 @@ export class LayoutComponent {
   readonly itensNav: NavItem[] = [
     { rotulo: 'Dashboard', rota: '/dashboard', icone: 'dashboard', permissoes: ['clientes:ver'] },
     { rotulo: 'Clientes', rota: '/clientes', icone: 'groups', permissoes: ['clientes:ver'] },
+    { rotulo: 'Interações', rota: '/interacoes', icone: 'forum', permissoes: ['interacoes:ver'] },
     { rotulo: 'Usuários', rota: '/usuarios', icone: 'manage_accounts', permissoes: ['usuarios:ver', 'usuarios:gerenciar'] },
     { rotulo: 'Permissões', rota: '/permissoes', icone: 'admin_panel_settings', permissoes: ['permissoes:ver'] },
     { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissoes: ['configuracao:ver'] },

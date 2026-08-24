@@ -7,6 +7,7 @@ import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { ClienteListComponent } from './pages/clientes/cliente-list.component';
 import { ClienteFormComponent } from './pages/clientes/cliente-form.component';
 import { ClienteDetailComponent } from './pages/clientes/cliente-detail.component';
+import { InteracoesListComponent } from './pages/interacoes/interacoes-list.component';
 import { UsuarioManagementComponent } from './pages/usuarios/usuario-management.component';
 import { AcessoNegadoComponent } from './pages/acesso-negado/acesso-negado.component';
 import { ConfiguracoesComponent } from './pages/configuracoes/configuracoes.component';
@@ -40,6 +41,11 @@ export const routes: Routes = [
         path: 'clientes/:id/editar',
         component: ClienteFormComponent,
         canActivate: [permissionGuard('clientes:editar')],
+      },
+      {
+        path: 'interacoes',
+        component: InteracoesListComponent,
+        canActivate: [permissionGuard('interacoes:ver')],
       },
       {
         path: 'usuarios',
