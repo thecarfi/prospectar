@@ -131,7 +131,7 @@ import { VisualizarInteracaoDialogComponent } from '../../shared/visualizar-inte
           <ng-container matColumnDef="data">
             <th mat-header-cell *matHeaderCellDef>Data</th>
             <td mat-cell *matCellDef="let interacao">
-              {{ interacao.criado_em | date: 'dd/MM/yyyy' }}
+              {{ interacao.ocorreu_em | date: 'dd/MM/yyyy' }}
             </td>
           </ng-container>
           <ng-container matColumnDef="criado_por">

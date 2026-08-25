@@ -42,11 +42,11 @@ async function listar(req, res, next) {
     }
     if (data_inicio) {
       params.push(data_inicio);
-      condicoes.push(`i.criado_em >= $${params.length}::timestamptz`);
+      condicoes.push(`i.ocorreu_em >= $${params.length}::timestamptz`);
     }
     if (data_fim) {
       params.push(data_fim);
-      condicoes.push(`i.criado_em < ($${params.length}::date + INTERVAL '1 day')`);
+      condicoes.push(`i.ocorreu_em < ($${params.length}::date + INTERVAL '1 day')`);
     }
 
     const whereSql = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
@@ -69,7 +69,7 @@ async function listar(req, res, next) {
               i.criado_em, i.criado_por, u.nome AS criado_por_nome
          ${fromSql}
          ${whereSql}
-        ORDER BY i.criado_em DESC, i.id DESC
+        ORDER BY i.ocorreu_em DESC, i.id DESC
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limiteNum, offset]
     );
