@@ -86,7 +86,7 @@ type OpcaoCliente = Cliente | OpcaoNovoCliente;
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Data da interação</mat-label>
-          <input matInput formControlName="ocorreu_em" type="datetime-local" />
+          <input matInput formControlName="ocorreu_em" type="date" />
         </mat-form-field>
       </form>
     </mat-dialog-content>
@@ -146,7 +146,7 @@ export class InteracaoDialogComponent implements OnInit {
         assunto: this.interacao.assunto,
         descricao: this.interacao.descricao || '',
         ocorreu_em: this.interacao.ocorreu_em
-          ? this.paraInputLocal(this.interacao.ocorreu_em)
+          ? this.interacao.ocorreu_em.substring(0, 10)
           : '',
       });
       if (this.interacao.cliente_id) {
@@ -255,7 +255,7 @@ export class InteracaoDialogComponent implements OnInit {
       assunto: valor.assunto,
       descricao: valor.descricao || null,
       ocorreu_em: valor.ocorreu_em
-        ? new Date(valor.ocorreu_em).toISOString()
+        ? new Date(valor.ocorreu_em + 'T00:00:00').toISOString()
         : undefined,
     };
 
@@ -296,8 +296,6 @@ export class InteracaoDialogComponent implements OnInit {
   }
 
   private paraInputLocal(iso: string): string {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return iso.substring(0, 10);
   }
 }
