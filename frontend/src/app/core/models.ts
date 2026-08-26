@@ -186,3 +186,32 @@ export interface InteracoesFiltrosMeta {
   usuarios: { id: number; nome: string }[];
   tipos: string[];
 }
+
+export interface DocumentoEmitido {
+  filial_destino?: string;
+  cidade_destinatario?: string;
+  documento?: string;
+  emissao_ultimo_manifesto?: string;
+  eh_vaptlog?: string;
+  data_entrega?: string;
+  eh_data_entrega_editada?: string;
+  vaptlog_entrega?: string;
+}
+
+export interface MonitoraRondoniaFiltros {
+  filial_destino?: string;
+  cidade_destinatario?: string;
+  documento?: string;
+  data_manifesto?: string;
+  eh_vaptlog?: string;
+}
+
+export interface MonitoraRondoniaFiltrosMeta {
+  filiais: string[];
+  cidades: string[];
+}
+
+export interface SalvarDataEntregaPayload {
+  data_entrega: string;
+  eh_data_entrega_editada: string;
+}

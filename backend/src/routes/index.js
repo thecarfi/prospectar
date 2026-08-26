@@ -9,6 +9,7 @@ const cnaeRoutes = require('../modules/cnae/cnae.routes');
 const interacoesGlobalRoutes = require('../modules/interacoes/interacoes.global.routes');
 const papeisRoutes = require('../modules/papeis/papeis.routes');
 const consultasRoutes = require('../modules/consultas/consultas.routes');
+const monitoraRondoniaRoutes = require('../modules/monitora_rondonia/monitora-rondonia.routes');
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/cnae', cnaeRoutes);
 router.use('/interacoes', interacoesGlobalRoutes);
 router.use('/papeis', papeisRoutes);
 router.use('/consultas', consultasRoutes);
+router.use('/monitora-rondonia', monitoraRondoniaRoutes);
 
 module.exports = router;

@@ -16,6 +16,7 @@ const PERMISSOES = {
   cnae: ['ver', 'criar', 'editar', 'excluir'],
   configuracao: ['ver'],
   permissoes: ['ver', 'gerenciar'],
+  'monitora-rondonia': ['ver', 'editar'],
 };
 
 const PAPEIS_DESCRICOES = {
@@ -81,6 +82,7 @@ const PAPEIS = {
     'status_clientes:ver',
     'cnae:ver', 'cnae:criar', 'cnae:editar',
     'configuracao:ver',
+    'monitora-rondonia:ver', 'monitora-rondonia:editar',
   ],
   visualizador: [
     'clientes:ver',
@@ -91,6 +93,7 @@ const PAPEIS = {
     'status_clientes:ver',
     'cnae:ver',
     'configuracao:ver',
+    'monitora-rondonia:ver',
   ],
 };
 

@@ -12,6 +12,7 @@ import { UsuarioManagementComponent } from './pages/usuarios/usuario-management.
 import { AcessoNegadoComponent } from './pages/acesso-negado/acesso-negado.component';
 import { ConfiguracoesComponent } from './pages/configuracoes/configuracoes.component';
 import { PermissoesComponent } from './pages/permissoes/permissoes.component';
+import { MonitoraRondoniaComponent } from './pages/monitora-rondonia/monitora-rondonia.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -61,6 +62,11 @@ export const routes: Routes = [
         path: 'configuracoes',
         component: ConfiguracoesComponent,
         canActivate: [permissionGuard('configuracao:ver')],
+      },
+      {
+        path: 'monitora-rondonia',
+        component: MonitoraRondoniaComponent,
+        canActivate: [permissionGuard('monitora-rondonia:ver')],
       },
       { path: 'acesso-negado', component: AcessoNegadoComponent },
     ],
