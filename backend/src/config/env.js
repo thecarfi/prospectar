@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const obrigatorias = ['DATABASE_URL', 'JWT_SECRET'];
+const obrigatorias = ['DATABASE_URL', 'JWT_SECRET', 'ADMIN_EMAIL', 'ADMIN_SENHA'];
 
 for (const chave of obrigatorias) {
   if (!process.env[chave]) {
@@ -16,9 +16,11 @@ module.exports = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   cnpjWsTimeoutMs: Number(process.env.CNPJ_WS_TIMEOUT_MS) || 10000,
   cnpjWsTentativas: Number(process.env.CNPJ_WS_TENTATIVAS) || 3,
+  bqViewDocumentos: process.env.BQ_VIEW_DOCUMENTOS,
+  bqTableEntradas: process.env.BQ_TABLE_ENTRADAS,
   admin: {
     nome: process.env.ADMIN_NOME || 'Administrador',
-    email: process.env.ADMIN_EMAIL || 'admin@gestao.com.br',
-    senha: process.env.ADMIN_SENHA || 'admin123',
+    email: process.env.ADMIN_EMAIL,
+    senha: process.env.ADMIN_SENHA,
   },
 };

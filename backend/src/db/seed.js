@@ -156,7 +156,7 @@ async function seed() {
     await client.query('COMMIT');
 
     console.log('Seed concluído.');
-    console.log(`Admin padrão -> email: ${env.admin.email} | senha: ${env.admin.senha}`);
+    console.log(`Admin padrão -> email: ${env.admin.email}`);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
