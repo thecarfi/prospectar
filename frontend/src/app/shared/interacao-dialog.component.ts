@@ -19,6 +19,9 @@ import { Cliente, Interacao } from '../core/models';
 export interface InteracaoDialogData {
   interacao?: Interacao | null;
   selecionarCliente?: boolean;
+  clientePreselecionado?: Cliente;
+  clientePreselecionadoNome?: string;
+  programacao_id?: number;
 }
 
 interface OpcaoNovoCliente {
@@ -66,6 +69,10 @@ type OpcaoCliente = Cliente | OpcaoNovoCliente;
               {{ cliente.nome }}
             </mat-option>
           </mat-autocomplete>
+        </mat-form-field>
+        <mat-form-field appearance="outline" *ngIf="!selecionarCliente && clientePreselecionadoNome">
+          <mat-label>Cliente</mat-label>
+          <input matInput [value]="clientePreselecionadoNome" readonly />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Tipo</mat-label>
@@ -123,6 +130,12 @@ export class InteracaoDialogComponent implements OnInit {
   readonly selecionarCliente: boolean =
     !!this.data?.selecionarCliente && !this.interacao;
   readonly podeCriarCliente = this.auth.temPermissao('clientes:criar');
+
+  readonly clientePreselecionado: Cliente | null =
+    this.data?.clientePreselecionado ?? null;
+  readonly clientePreselecionadoNome: string =
+    this.data?.clientePreselecionadoNome ?? '';
+  readonly programacao_id: number | undefined = this.data?.programacao_id;
 
   readonly clienteControl = new FormControl<string | OpcaoCliente>('', {
     nonNullable: true,
@@ -198,6 +211,9 @@ export class InteracaoDialogComponent implements OnInit {
   }
 
   get podeSalvar(): boolean {
+    if (this.clientePreselecionado) {
+      return true;
+    }
     if (!this.selecionarCliente) {
       return true;
     }
@@ -250,7 +266,7 @@ export class InteracaoDialogComponent implements OnInit {
     if (this.formulario.invalid) return;
     if (!this.podeSalvar) return;
     const valor = this.formulario.getRawValue();
-    const dados = {
+    const dados: Record<string, unknown> = {
       tipo: valor.tipo,
       assunto: valor.assunto,
       descricao: valor.descricao || null,
@@ -258,6 +274,16 @@ export class InteracaoDialogComponent implements OnInit {
         ? new Date(valor.ocorreu_em + 'T00:00:00').toISOString()
         : undefined,
     };
+
+    if (this.programacao_id) {
+      dados['programacao_id'] = this.programacao_id;
+    }
+
+    if (this.clientePreselecionado) {
+      dados['cliente_id'] = this.clientePreselecionado.id;
+      this.dialogRef.close(dados);
+      return;
+    }
 
     if (this.clienteSelecionado) {
       this.dialogRef.close({ ...dados, cliente_id: this.clienteSelecionado.id });

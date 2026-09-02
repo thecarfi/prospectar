@@ -17,6 +17,7 @@ router.get(
   query('pagina').optional().isInt({ min: 1 }).withMessage('Página inválida'),
   query('limite').optional().isInt({ min: 1, max: 100 }).withMessage('Limite inválido'),
   query('tipo').optional().isIn(TIPOS_VALIDOS).withMessage('Tipo inválido'),
+  query('programacao_id').optional().isInt().withMessage('Programação inválida'),
   validate,
   interacoesGlobalController.listar
 );
@@ -46,6 +47,7 @@ router.post(
   }),
   body('assunto').trim().notEmpty().withMessage('Assunto obrigatório'),
   body('tipo').optional().isIn(TIPOS_VALIDOS).withMessage('Tipo inválido'),
+  body('programacao_id').optional({ nullable: true }).isInt().withMessage('Programação inválida'),
   validate,
   interacoesGlobalController.criar
 );

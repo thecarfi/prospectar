@@ -10,13 +10,12 @@ function errorHandler(err, req, res, next) {
   console.error(err);
 
   const status = err.status || 500;
-  const message = err.message || 'Erro interno do servidor';
 
   if (status === 500) {
     return res.status(500).json({ message: 'Erro interno do servidor' });
   }
 
-  res.status(status).json({ message });
+  res.status(status).json({ message: err.message, ...(err.data ? { data: err.data } : {}) });
 }
 
 module.exports = { notFound, errorHandler };

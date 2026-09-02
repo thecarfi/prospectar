@@ -199,6 +199,7 @@ export class LayoutComponent {
     { rotulo: 'Dashboard', rota: '/dashboard', icone: 'dashboard', permissoes: ['clientes:ver'] },
     { rotulo: 'Clientes', rota: '/clientes', icone: 'groups', permissoes: ['clientes:ver'] },
     { rotulo: 'Interações', rota: '/interacoes', icone: 'forum', permissoes: ['interacoes:ver'] },
+    { rotulo: 'Programações de Visita', rota: '/programacoes', icone: 'event_available', permissoes: ['programacoes:ver'] },
     { rotulo: 'Monitora Rondônia', rota: '/monitora-rondonia', icone: 'local_shipping', permissoes: ['monitora-rondonia:ver'] },
     { rotulo: 'Usuários', rota: '/usuarios', icone: 'manage_accounts', permissoes: ['usuarios:ver', 'usuarios:gerenciar'] },
     { rotulo: 'Permissões', rota: '/permissoes', icone: 'admin_panel_settings', permissoes: ['permissoes:ver'] },

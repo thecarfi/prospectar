@@ -59,6 +59,9 @@ export class InteracoesService {
     if (filtros.data_fim) {
       params = params.set('data_fim', filtros.data_fim);
     }
+    if (filtros.programacao_id) {
+      params = params.set('programacao_id', filtros.programacao_id);
+    }
     params = params.set('pagina', filtros.pagina ?? 1);
     params = params.set('limite', filtros.limite ?? 10);
     return this.http.get<Paginacao<Interacao>>('/api/interacoes', { params });

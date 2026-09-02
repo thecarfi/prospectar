@@ -138,6 +138,15 @@ import { VisualizarInteracaoDialogComponent } from '../../shared/visualizar-inte
             <th mat-header-cell *matHeaderCellDef>Criado por</th>
             <td mat-cell *matCellDef="let interacao">{{ interacao.criado_por_nome || '—' }}</td>
           </ng-container>
+          <ng-container matColumnDef="programacao">
+            <th mat-header-cell *matHeaderCellDef>Programação</th>
+            <td mat-cell *matCellDef="let interacao">
+              <a *ngIf="interacao.programacao_id" [routerLink]="['/programacoes', interacao.programacao_id]">
+                {{ interacao.programacao_titulo || 'Programação' }}
+              </a>
+              <span *ngIf="!interacao.programacao_id">—</span>
+            </td>
+          </ng-container>
           <ng-container matColumnDef="acoes">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let interacao" class="acoes-cell">
@@ -262,7 +271,7 @@ export class InteracoesListComponent implements OnInit {
   pagina = 1;
   limite = 10;
   carregando = false;
-  readonly colunas = ['nome', 'tipo', 'assunto', 'data', 'criado_por', 'acoes'];
+  readonly colunas = ['nome', 'tipo', 'assunto', 'data', 'criado_por', 'programacao', 'acoes'];
 
   ngOnInit(): void {
     this.interacoesService.obterFiltros().subscribe({

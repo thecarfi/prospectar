@@ -11,6 +11,7 @@ async function listar(req, res, next) {
       tipo,
       data_inicio,
       data_fim,
+      programacao_id,
       pagina = 1,
       limite = 10,
     } = req.query;
@@ -48,6 +49,13 @@ async function listar(req, res, next) {
       params.push(data_fim);
       condicoes.push(`i.ocorreu_em < ($${params.length}::date + INTERVAL '1 day')`);
     }
+    if (programacao_id) {
+      const pgId = parseInt(programacao_id, 10);
+      if (Number.isInteger(pgId)) {
+        params.push(pgId);
+        condicoes.push(`i.programacao_id = $${params.length}`);
+      }
+    }
 
     const whereSql = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '';
     const paginaNum = Math.max(1, Number(pagina) || 1);
@@ -56,7 +64,8 @@ async function listar(req, res, next) {
 
     const fromSql = `FROM interacoes i
          JOIN clientes c ON c.id = i.cliente_id
-         LEFT JOIN usuarios u ON u.id = i.criado_por`;
+         LEFT JOIN usuarios u ON u.id = i.criado_por
+         LEFT JOIN programacoes p ON p.id = i.programacao_id`;
 
     const { rows: totalRows } = await pool.query(
       `SELECT COUNT(*)::int AS total ${fromSql} ${whereSql}`,
@@ -66,7 +75,8 @@ async function listar(req, res, next) {
     const { rows } = await pool.query(
       `SELECT i.id, i.cliente_id, c.nome AS cliente_nome,
               i.tipo, i.assunto, i.descricao, i.ocorreu_em,
-              i.criado_em, i.criado_por, u.nome AS criado_por_nome
+              i.criado_em, i.criado_por, u.nome AS criado_por_nome,
+              i.programacao_id, p.titulo AS programacao_titulo
          ${fromSql}
          ${whereSql}
         ORDER BY i.ocorreu_em DESC, i.id DESC
@@ -139,7 +149,7 @@ async function criarClientePorNome(client, nome, usuarioId) {
 async function criar(req, res, next) {
   const client = await pool.connect();
   try {
-    const { tipo = 'anotacao', assunto, descricao, ocorreu_em } = req.body;
+    const { tipo = 'anotacao', assunto, descricao, ocorreu_em, programacao_id } = req.body;
     let { cliente_id, cliente_nome } = req.body;
 
     if (cliente_nome != null && String(cliente_nome).trim()) {
@@ -150,6 +160,19 @@ async function criar(req, res, next) {
     } else {
       cliente_nome = null;
       await validarCliente(cliente_id);
+    }
+
+    if (programacao_id) {
+      const { rows: prog } = await client.query(
+        'SELECT id, status FROM programacoes WHERE id = $1',
+        [programacao_id]
+      );
+      if (!prog[0]) {
+        throw new ApiError(404, 'Programação não encontrada');
+      }
+      if (prog[0].status !== 'pendente' && prog[0].status !== 'em_andamento') {
+        throw new ApiError(400, 'Não é possível adicionar interações a uma programação concluída ou cancelada');
+      }
     }
 
     await client.query('BEGIN');
@@ -163,9 +186,9 @@ async function criar(req, res, next) {
     }
 
     const { rows } = await client.query(
-      `INSERT INTO interacoes (cliente_id, tipo, assunto, descricao, ocorreu_em, criado_por)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, cliente_id, tipo, assunto, descricao, ocorreu_em, criado_por, criado_em`,
+      `INSERT INTO interacoes (cliente_id, tipo, assunto, descricao, ocorreu_em, criado_por, programacao_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, cliente_id, tipo, assunto, descricao, ocorreu_em, criado_por, criado_em, programacao_id`,
       [
         cliente_id,
         tipo,
@@ -173,6 +196,7 @@ async function criar(req, res, next) {
         descricao || null,
         ocorreu_em || new Date().toISOString(),
         req.user.id,
+        programacao_id || null,
       ]
     );
 

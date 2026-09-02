@@ -170,6 +170,8 @@ export interface Interacao {
   criado_por?: number;
   criado_por_nome?: string;
   criado_em?: string;
+  programacao_id?: number;
+  programacao_titulo?: string;
 }
 
 export interface InteracaoFiltros {
@@ -178,6 +180,7 @@ export interface InteracaoFiltros {
   tipo?: string;
   data_inicio?: string;
   data_fim?: string;
+  programacao_id?: number;
   pagina?: number;
   limite?: number;
 }
@@ -185,6 +188,52 @@ export interface InteracaoFiltros {
 export interface InteracoesFiltrosMeta {
   usuarios: { id: number; nome: string }[];
   tipos: string[];
+}
+
+export type ProgramacaoStatus = 'pendente' | 'em_andamento' | 'concluida' | 'cancelada';
+
+export interface ProgramacaoCliente {
+  id: number;
+  cliente_id: number;
+  cliente_nome?: string;
+  tem_interacao: boolean;
+  interacao_id?: number;
+  interacao?: Interacao;
+}
+
+export interface Programacao {
+  id: number;
+  titulo: string;
+  data_inicio: string;
+  data_fim: string;
+  municipio_id?: number;
+  municipio_nome?: string;
+  municipio_uf?: string;
+  regiao?: string;
+  status: ProgramacaoStatus;
+  descricao?: string;
+  criado_por?: number;
+  criado_por_nome?: string;
+  criado_em?: string;
+  atualizado_em?: string;
+  clientes?: ProgramacaoCliente[];
+  clientes_count?: number;
+  clientes_com_interacao?: number;
+}
+
+export interface ProgramacaoFiltros {
+  titulo?: string;
+  status?: string;
+  data_inicio?: string;
+  data_fim?: string;
+  pagina?: number;
+  limite?: number;
+}
+
+export interface ConcluirProgramacaoResultado {
+  ok: boolean;
+  mensagem?: string;
+  clientes_sem_interacao?: { cliente_id: number; cliente_nome: string }[];
 }
 
 export interface DocumentoEmitido {

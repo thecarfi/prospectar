@@ -13,6 +13,8 @@ import { AcessoNegadoComponent } from './pages/acesso-negado/acesso-negado.compo
 import { ConfiguracoesComponent } from './pages/configuracoes/configuracoes.component';
 import { PermissoesComponent } from './pages/permissoes/permissoes.component';
 import { MonitoraRondoniaComponent } from './pages/monitora-rondonia/monitora-rondonia.component';
+import { ProgramacoesListComponent } from './pages/programacoes/programacoes-list.component';
+import { ProgramacaoDetailComponent } from './pages/programacoes/programacao-detail.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -67,6 +69,16 @@ export const routes: Routes = [
         path: 'monitora-rondonia',
         component: MonitoraRondoniaComponent,
         canActivate: [permissionGuard('monitora-rondonia:ver')],
+      },
+      {
+        path: 'programacoes',
+        component: ProgramacoesListComponent,
+        canActivate: [permissionGuard('programacoes:ver')],
+      },
+      {
+        path: 'programacoes/:id',
+        component: ProgramacaoDetailComponent,
+        canActivate: [permissionGuard('programacoes:ver')],
       },
       { path: 'acesso-negado', component: AcessoNegadoComponent },
     ],
