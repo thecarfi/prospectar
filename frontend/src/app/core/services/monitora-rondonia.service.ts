@@ -42,8 +42,11 @@ export class MonitoraRondoniaService {
     if (filtros.documento) {
       params = params.set('documento', filtros.documento);
     }
-    if (filtros.data_manifesto) {
-      params = params.set('data_manifesto', filtros.data_manifesto);
+    if (filtros.data_manifesto_inicio) {
+      params = params.set('data_manifesto_inicio', filtros.data_manifesto_inicio);
+    }
+    if (filtros.data_manifesto_fim) {
+      params = params.set('data_manifesto_fim', filtros.data_manifesto_fim);
     }
     if (filtros.eh_vaptlog) {
       params = params.set('eh_vaptlog', filtros.eh_vaptlog);

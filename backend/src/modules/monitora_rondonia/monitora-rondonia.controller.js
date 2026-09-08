@@ -71,7 +71,8 @@ async function documentos(req, res, next) {
       filial_destino,
       cidade_destinatario,
       documento,
-      data_manifesto,
+      data_manifesto_inicio,
+      data_manifesto_fim,
       eh_vaptlog,
       pagina = 1,
       limite = 10,
@@ -83,7 +84,7 @@ async function documentos(req, res, next) {
 
     const cacheKey = crypto
       .createHash('md5')
-      .update(JSON.stringify({ filial_destino, cidade_destinatario, documento, data_manifesto, eh_vaptlog, pagina: paginaNum, limite: limiteNum }))
+      .update(JSON.stringify({ filial_destino, cidade_destinatario, documento, data_manifesto_inicio, data_manifesto_fim, eh_vaptlog, pagina: paginaNum, limite: limiteNum }))
       .digest('hex');
 
     const entradaCache = cacheDocumentos.get(cacheKey);
@@ -110,10 +111,20 @@ async function documentos(req, res, next) {
       params.documento = documento;
       parameterTypes.documento = { typeKind: 'STRING' };
     }
-    if (data_manifesto) {
-      condicoes.push('DATE(emissao_ultimo_manifesto) = @data');
-      params.data = data_manifesto;
-      parameterTypes.data = { typeKind: 'STRING' };
+    if (data_manifesto_inicio && data_manifesto_fim) {
+      condicoes.push('DATE(emissao_ultimo_manifesto) BETWEEN @data_inicio AND @data_fim');
+      params.data_inicio = data_manifesto_inicio;
+      params.data_fim = data_manifesto_fim;
+      parameterTypes.data_inicio = { typeKind: 'STRING' };
+      parameterTypes.data_fim = { typeKind: 'STRING' };
+    } else if (data_manifesto_inicio) {
+      condicoes.push('DATE(emissao_ultimo_manifesto) >= @data_inicio');
+      params.data_inicio = data_manifesto_inicio;
+      parameterTypes.data_inicio = { typeKind: 'STRING' };
+    } else if (data_manifesto_fim) {
+      condicoes.push('DATE(emissao_ultimo_manifesto) <= @data_fim');
+      params.data_fim = data_manifesto_fim;
+      parameterTypes.data_fim = { typeKind: 'STRING' };
     }
     if (eh_vaptlog) {
       condicoes.push('eh_vaptlog = @vaptlog');
@@ -130,7 +141,7 @@ async function documentos(req, res, next) {
                         COUNT(*) OVER() AS total
                    FROM \`${VIEW_NAME}\`
                   ${whereSql}
-                  ORDER BY documento, emissao_ultimo_manifesto
+                  ORDER BY emissao_ultimo_manifesto DESC
                   LIMIT ${limiteNum} OFFSET ${offset}`;
 
     const [rows] = await bigquery.query({

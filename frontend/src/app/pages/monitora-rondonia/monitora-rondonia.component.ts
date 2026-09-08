@@ -75,8 +75,12 @@ import { PermissaoDirective } from '../../core/directives/permissao.directive';
             <input matInput formControlName="documento" placeholder="Documento exato" />
           </mat-form-field>
           <mat-form-field appearance="outline">
-            <mat-label>Data manifesto</mat-label>
-            <input matInput formControlName="data_manifesto" type="date" />
+            <mat-label>Data manifesto início</mat-label>
+            <input matInput formControlName="data_manifesto_inicio" type="date" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Data manifesto fim</mat-label>
+            <input matInput formControlName="data_manifesto_fim" type="date" />
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>É Vaptlog</mat-label>
@@ -235,7 +239,8 @@ export class MonitoraRondoniaComponent implements OnInit {
     filial_destino: [null as string | null],
     cidade_destinatario: [null as string | null],
     documento: [''],
-    data_manifesto: [''],
+    data_manifesto_inicio: [''],
+    data_manifesto_fim: [''],
     eh_vaptlog: [null as string | null],
   });
 
@@ -340,7 +345,8 @@ export class MonitoraRondoniaComponent implements OnInit {
       filial_destino: f.filial_destino ?? undefined,
       cidade_destinatario: f.cidade_destinatario ?? undefined,
       documento: f.documento || undefined,
-      data_manifesto: f.data_manifesto || undefined,
+      data_manifesto_inicio: f.data_manifesto_inicio || undefined,
+      data_manifesto_fim: f.data_manifesto_fim || undefined,
       eh_vaptlog: f.eh_vaptlog ?? undefined,
     };
     this.service.listar(filtroValor, this.pagina, this.limite).subscribe({

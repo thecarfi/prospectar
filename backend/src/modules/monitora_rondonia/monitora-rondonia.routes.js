@@ -21,10 +21,21 @@ router.get(
   query('filial_destino').optional().isString().trim(),
   query('cidade_destinatario').optional().isString().trim(),
   query('documento').optional().isString().trim(),
-  query('data_manifesto')
+  query('data_manifesto_inicio')
     .optional()
     .matches(/^\d{4}-\d{2}-\d{2}$/)
-    .withMessage('Data deve estar no formato AAAA-MM-DD'),
+    .withMessage('Data inicio deve estar no formato AAAA-MM-DD'),
+  query('data_manifesto_fim')
+    .optional()
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('Data fim deve estar no formato AAAA-MM-DD')
+    .custom((fim, { req }) => {
+      const inicio = req.query?.data_manifesto_inicio;
+      if (inicio && fim < inicio) {
+        throw new Error('Data inicio deve ser menor ou igual a data fim');
+      }
+      return true;
+    }),
   query('eh_vaptlog').optional().isIn(['S', 'N']).withMessage('Valor invalido'),
   query('pagina').optional().isInt({ min: 1 }).withMessage('Pagina invalida'),
   query('limite').optional().isInt({ min: 1, max: 100 }).withMessage('Limite invalido'),

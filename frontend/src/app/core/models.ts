@@ -251,7 +251,8 @@ export interface MonitoraRondoniaFiltros {
   filial_destino?: string;
   cidade_destinatario?: string;
   documento?: string;
-  data_manifesto?: string;
+  data_manifesto_inicio?: string;
+  data_manifesto_fim?: string;
   eh_vaptlog?: string;
 }
 
