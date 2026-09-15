@@ -85,7 +85,7 @@ import { PermissaoDirective } from '../../core/directives/permissao.directive';
           <mat-form-field appearance="outline">
             <mat-label>É Vaptlog</mat-label>
             <mat-select formControlName="eh_vaptlog">
-              <mat-option [value]="null">Todos</mat-option>
+              <mat-option value="">Todos</mat-option>
               <mat-option value="S">Sim</mat-option>
               <mat-option value="N">Não</mat-option>
             </mat-select>
@@ -241,7 +241,7 @@ export class MonitoraRondoniaComponent implements OnInit {
     documento: [''],
     data_manifesto_inicio: [''],
     data_manifesto_fim: [''],
-    eh_vaptlog: [null as string | null],
+    eh_vaptlog: [''],
   });
 
   readonly colunas = [
@@ -347,7 +347,7 @@ export class MonitoraRondoniaComponent implements OnInit {
       documento: f.documento || undefined,
       data_manifesto_inicio: f.data_manifesto_inicio || undefined,
       data_manifesto_fim: f.data_manifesto_fim || undefined,
-      eh_vaptlog: f.eh_vaptlog ?? undefined,
+      eh_vaptlog: f.eh_vaptlog || undefined,
     };
     this.service.listar(filtroValor, this.pagina, this.limite).subscribe({
       next: (res) => {
