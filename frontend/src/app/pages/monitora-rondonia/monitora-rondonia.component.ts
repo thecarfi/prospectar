@@ -50,7 +50,7 @@ import { PermissaoDirective } from '../../core/directives/permissao.directive';
   ],
   template: `
     <div class="header">
-      <h1>Monitora Rondônia</h1>
+      <h1>Monitor</h1>
     </div>
 
     <mat-card class="filter-card">
