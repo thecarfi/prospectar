@@ -265,3 +265,22 @@ export interface SalvarDataEntregaPayload {
   data_entrega: string;
   eh_data_entrega_editada: string;
 }
+
+export interface ClienteCarteirizacao {
+  nome_pagador?: string;
+  cnpj_pagador?: string;
+  qtde_cte?: number;
+  qtde_meses_faturamento?: number;
+  maior_data_emissao?: string;
+  carteira_responsavel?: string;
+}
+
+export interface CarteirizacaoFiltros {
+  nome_pagador?: string;
+  cnpj_pagador?: string;
+  carteira_responsavel?: string;
+}
+
+export interface CarteirizacaoFiltrosMeta {
+  carteiras: string[];
+}

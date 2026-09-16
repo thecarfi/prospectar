@@ -18,6 +18,8 @@ module.exports = {
   cnpjWsTentativas: Number(process.env.CNPJ_WS_TENTATIVAS) || 3,
   bqViewDocumentos: process.env.BQ_VIEW_DOCUMENTOS,
   bqTableEntradas: process.env.BQ_TABLE_ENTRADAS,
+  bqViewCarteirizacao: process.env.BQ_VIEW_CARTEIRIZACAO,
+  bqTableCarteirizacao: process.env.BQ_TABELA_CARTEIRIZACAO,
   admin: {
     nome: process.env.ADMIN_NOME || 'Administrador',
     email: process.env.ADMIN_EMAIL,
