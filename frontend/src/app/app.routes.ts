@@ -16,6 +16,7 @@ import { MonitoraRondoniaComponent } from './pages/monitora-rondonia/monitora-ro
 import { CarteirizacaoComponent } from './pages/carteirizacao/carteirizacao.component';
 import { ProgramacoesListComponent } from './pages/programacoes/programacoes-list.component';
 import { ProgramacaoDetailComponent } from './pages/programacoes/programacao-detail.component';
+import { CotacaoComponent } from './pages/cotacoes/cotacao.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -85,6 +86,11 @@ export const routes: Routes = [
         path: 'programacoes/:id',
         component: ProgramacaoDetailComponent,
         canActivate: [permissionGuard('programacoes:ver')],
+      },
+      {
+        path: 'cotacoes',
+        component: CotacaoComponent,
+        canActivate: [permissionGuard('cotacao:ver')],
       },
       { path: 'acesso-negado', component: AcessoNegadoComponent },
     ],

@@ -4,6 +4,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { SegmentoCrudComponent } from './segmento-crud.component';
 import { StatusClienteCrudComponent } from './status-crud.component';
 import { CnaeConsultaComponent } from './cnae-consulta.component';
+import { CotacaoConfigComponent } from './cotacao-config.component';
 
 @Component({
   selector: 'app-configuracoes',
@@ -12,6 +13,7 @@ import { CnaeConsultaComponent } from './cnae-consulta.component';
     SegmentoCrudComponent,
     StatusClienteCrudComponent,
     CnaeConsultaComponent,
+    CotacaoConfigComponent,
   ],
   template: `
     <div class="header">
@@ -37,6 +39,13 @@ import { CnaeConsultaComponent } from './cnae-consulta.component';
         <mat-tab label="CNAE">
           <div class="tab-content">
             <app-cnae-consulta></app-cnae-consulta>
+          </div>
+        </mat-tab>
+      }
+      @if (auth.temPermissao('cotacao:configurar')) {
+        <mat-tab label="Cotação">
+          <div class="tab-content">
+            <app-cotacao-config></app-cotacao-config>
           </div>
         </mat-tab>
       }

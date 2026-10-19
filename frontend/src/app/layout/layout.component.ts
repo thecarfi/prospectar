@@ -202,6 +202,7 @@ export class LayoutComponent {
     { rotulo: 'Programações de Visita', rota: '/programacoes', icone: 'event_available', permissoes: ['programacoes:ver'] },
     { rotulo: 'Monitor', rota: '/monitora-rondonia', icone: 'local_shipping', permissoes: ['monitora-rondonia:ver'] },
     { rotulo: 'Carteirização', rota: '/carteirizacao', icone: 'assignment_ind', permissoes: ['carteirizacao:ver'] },
+    { rotulo: 'Cotação', rota: '/cotacoes', icone: 'request_quote', permissoes: ['cotacao:ver'] },
     { rotulo: 'Usuários', rota: '/usuarios', icone: 'manage_accounts', permissoes: ['usuarios:ver', 'usuarios:gerenciar'] },
     { rotulo: 'Permissões', rota: '/permissoes', icone: 'admin_panel_settings', permissoes: ['permissoes:ver'] },
     { rotulo: 'Configurações', rota: '/configuracoes', icone: 'settings', permissoes: ['configuracao:ver'] },

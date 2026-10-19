@@ -284,3 +284,98 @@ export interface CarteirizacaoFiltros {
 export interface CarteirizacaoFiltrosMeta {
   carteiras: string[];
 }
+
+export interface RotaCotacao {
+  id: number;
+  nome: string;
+  icms: number;
+  frete_minimo: number;
+}
+
+export interface GeneralidadeCotacao {
+  id: number;
+  tipo_generalidade: string;
+  valor_generalidade: number;
+}
+
+export interface CotacaoRotaOverride {
+  icms?: number;
+  frete_minimo?: number;
+}
+
+export interface CotacaoEntrada {
+  cliente_texto?: string | null;
+  cliente_id?: number | null;
+  rota_id: number;
+  largura?: number;
+  altura?: number;
+  comprimento?: number;
+  valor_nf: number;
+  peso: number;
+  rota?: CotacaoRotaOverride;
+  parametros?: Record<string, number>;
+}
+
+export interface CotacaoResultado {
+  peso_cubado: number;
+  peso_cubado_multiplicado: number;
+  peso_definido: number;
+  frete_peso: number;
+  frete_percentual_valor: number;
+  frete_minimo_valor: number;
+  frete_escolhido: string;
+  valor_frete: number;
+  icms_valor: number;
+  seguro_valor: number;
+  gris_valor: number;
+  pedagio_valor: number;
+  sec_cat_valor: number;
+  valor_generalidade: number;
+  valor_total: number;
+}
+
+export interface CotacaoCalculo extends CotacaoResultado {
+  rota: RotaCotacao;
+  parametros: Record<string, number>;
+}
+
+export interface CotacaoSalva extends CotacaoResultado {
+  id: number;
+  cliente_texto?: string | null;
+  cliente_id?: number | null;
+  rota_id?: number | null;
+  rota_nome: string;
+  icms_rota: number;
+  frete_minimo_rota: number;
+  largura: number;
+  altura: number;
+  comprimento: number;
+  valor_nf: number;
+  peso: number;
+  parametros: Record<string, number>;
+  cotado_por?: number | null;
+  cotado_por_nome?: string | null;
+  criado_em?: string;
+}
+
+export interface CotacaoHistoricoItem {
+  id: number;
+  cliente_texto?: string | null;
+  cliente_id?: number | null;
+  rota_id?: number | null;
+  rota_nome: string;
+  valor_nf: number;
+  peso_definido: number;
+  frete_escolhido: string;
+  valor_total: number;
+  cotado_por?: number | null;
+  cotado_por_nome?: string | null;
+  criado_em?: string;
+}
+
+export interface CotacaoFiltros {
+  cliente?: string;
+  rota_id?: number;
+  pagina?: number;
+  limite?: number;
+}

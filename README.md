@@ -91,6 +91,9 @@ Acesse http://localhost:4200 e faça login com o admin padrão criado no seed.
 | `enderecos` | Endereços do cliente (logradouro, bairro, município, CEP, principal) |
 | `interacoes` | Histórico de interações (ligação, visita, anotação, mensagem) |
 | `localizacao` | Estados e municípios de referência (IBGE), vinculados via `municipio_id` |
+| `cotacao_rotas` | Rotas de cotação (nome, ICMS decimal, frete mínimo) |
+| `cotacao_generalidades` | Parâmetros de cotação em linhas (`tipo_generalidade` + `valor_generalidade`) |
+| `cotacoes` | Histórico de cotações calculadas (entrada, parâmetros usados e resultados) |
 
 ## Papéis e permissões
 
@@ -105,6 +108,11 @@ e pela diretiva `appPermissao`.
 O acesso ao módulo **Configurações** (menu e rota) é controlado por `configuracao:ver`; cada
 aba dentro dele tem permissão própria: `segmentos:ver` (aba Segmentos) e `status_clientes:ver`
 (aba Status de Clientes).
+
+O módulo **Cotação** é acessado com `cotacao:ver` (concedida a operador e visualizador). A
+edição de rotas e generalidades é feita na aba **Cotação** de Configurações e exige
+`cotacao:configurar`, permissão criada sem concessão padrão — o admin pode atribuí-la a
+qualquer papel pela tela **Permissões**.
 
 ## Endpoints principais
 
@@ -126,6 +134,14 @@ aba dentro dele tem permissão própria: `segmentos:ver` (aba Segmentos) e `stat
 | GET/POST/PUT/DELETE | `/api/segmentos` | `segmentos:ver` / `segmentos:criar` / `segmentos:editar` / `segmentos:excluir` |
 | GET/POST/PUT/DELETE | `/api/status-clientes` | `status_clientes:ver` / `status_clientes:criar` / `status_clientes:editar` / `status_clientes:excluir` |
 | GET/POST/PUT/DELETE | `/api/usuarios` | `usuarios:ver` / `usuarios:gerenciar` |
+| GET | `/api/cotacoes/rotas` | `cotacao:ver` |
+| POST/PUT/DELETE | `/api/cotacoes/rotas` | `cotacao:configurar` |
+| GET | `/api/cotacoes/generalidades` | `cotacao:ver` |
+| PUT | `/api/cotacoes/generalidades/:id` | `cotacao:configurar` |
+| POST | `/api/cotacoes/calcular` | `cotacao:ver` |
+| POST | `/api/cotacoes` | `cotacao:ver` |
+| GET | `/api/cotacoes` | `cotacao:ver` |
+| GET | `/api/cotacoes/:id` | `cotacao:ver` |
 
 Busca e filtros em `GET /api/clientes`: `busca` (nome/CPF/CNPJ), `cidade` (nome do município),
 `estado` (UF), `segmento_id`, `status_id`, `pagina`, `limite`,
@@ -222,6 +238,29 @@ Exemplo de body com `json_coletado`:
   ]
 }
 ```
+
+## Módulo de Cotação
+
+A lógica de cálculo fica em `backend/src/modules/cotacoes/cotacoes.calc.js`:
+
+- Peso cubado = Largura × Altura × Comprimento (metros); peso cubado multiplicado = cubado × 300
+- Peso definido = maior(peso cubado × 300, peso informado)
+- Frete peso = peso definido × `valor_quilo`
+- Frete percentual = Valor NF × `frete_percentual`
+- Frete escolhido = maior(frete mínimo da rota, frete percentual, frete peso)
+- ICMS = frete escolhido × ICMS da rota
+- Generalidades = `seguro`×NF + `gris`×NF + `pedagio`×peso definido + `sec_cat`
+- Valor total = frete escolhido + ICMS + generalidades
+
+O botão **Calcular** usa `POST /api/cotacoes/calcular` (não persiste) e **Salvar cotação** usa
+`POST /api/cotacoes`, recalculando no servidor e gravando o histórico.
+
+Nas abas **Rotas** e **Generalidades** da tela de Cotação é possível editar ICMS, frete mínimo e
+os valores das generalidades apenas em memória (não gravam no banco). Ao calcular ou salvar, esses
+valores são enviados como override opcional no corpo da requisição (`rota: { icms, frete_minimo }`
+e `parametros: { seguro, gris, pedagio, sec_cat, valor_quilo, frete_percentual }`), substituindo
+os valores do banco somente naquele cálculo. O snapshot do histórico registra os valores usados.
+A edição permanente continua sendo feita em Configurações (aba Cotação, `cotacao:configurar`).
 
 ## Migrations
 

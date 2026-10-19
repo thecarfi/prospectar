@@ -12,6 +12,7 @@ const papeisRoutes = require('../modules/papeis/papeis.routes');
 const consultasRoutes = require('../modules/consultas/consultas.routes');
 const monitoraRondoniaRoutes = require('../modules/monitora_rondonia/monitora-rondonia.routes');
 const carteirizacaoRoutes = require('../modules/carteirizacao/carteirizacao.routes');
+const cotacoesRoutes = require('../modules/cotacoes/cotacoes.routes');
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/papeis', papeisRoutes);
 router.use('/consultas', consultasRoutes);
 router.use('/monitora-rondonia', monitoraRondoniaRoutes);
 router.use('/carteirizacao', carteirizacaoRoutes);
+router.use('/cotacoes', cotacoesRoutes);
 
 module.exports = router;
