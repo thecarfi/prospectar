@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { SILENCIAR_ERRO_HTTP } from './http-context.tokens';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const snackBar = inject(MatSnackBar);
@@ -12,6 +13,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((erro: HttpErrorResponse) => {
       if (erro.status === 401 && !req.url.includes('/auth/login')) {
         auth.logout();
+      }
+      if (req.context.get(SILENCIAR_ERRO_HTTP)) {
+        return throwError(() => erro);
       }
       const mensagem =
         erro.error?.message || 'Erro inesperado. Tente novamente.';

@@ -9,6 +9,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NgIf, NgFor } from '@angular/common';
 import { AuthService } from '../core/services/auth.service';
+import { AcessoModuloTrackerService } from '../core/services/acesso-modulo-tracker.service';
 
 interface NavItem {
   rotulo: string;
@@ -187,11 +188,16 @@ interface NavItem {
 export class LayoutComponent {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly acessoModuloTracker = inject(AcessoModuloTrackerService);
 
   @ViewChild(MatSidenavContainer) private sidenavContainer?: MatSidenavContainer;
 
   private static readonly MENU_KEY = 'menu-recolhido';
   private static readonly DURACAO_TRANSICAO_MS = 220;
+
+  constructor() {
+    this.acessoModuloTracker.iniciar();
+  }
 
   menuRecolhido = typeof localStorage !== 'undefined' && localStorage.getItem(LayoutComponent.MENU_KEY) === 'true';
 
