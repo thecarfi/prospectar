@@ -58,6 +58,20 @@ router.put(
 );
 
 router.put(
+  '/documentos/:documento/observacao',
+  requirePermission('monitora-rondonia:editar'),
+  param('documento').notEmpty().withMessage('Documento obrigatorio'),
+  body('observacao')
+    .isString()
+    .withMessage('Observacao invalida')
+    .trim()
+    .isLength({ max: 30 })
+    .withMessage('Observacao deve ter no maximo 30 caracteres'),
+  validate,
+  controller.salvarObservacao
+);
+
+router.put(
   '/documentos/:documento/vaptlog',
   requirePermission('monitora-rondonia:editar'),
   param('documento').notEmpty().withMessage('Documento obrigatorio'),

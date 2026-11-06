@@ -245,6 +245,7 @@ export interface DocumentoEmitido {
   data_entrega?: string;
   eh_data_entrega_editada?: string;
   vaptlog_entrega?: string;
+  observacao?: string;
 }
 
 export interface MonitoraRondoniaFiltros {
@@ -264,6 +265,10 @@ export interface MonitoraRondoniaFiltrosMeta {
 export interface SalvarDataEntregaPayload {
   data_entrega: string;
   eh_data_entrega_editada: string;
+}
+
+export interface SalvarObservacaoPayload {
+  observacao: string;
 }
 
 export interface ClienteCarteirizacao {

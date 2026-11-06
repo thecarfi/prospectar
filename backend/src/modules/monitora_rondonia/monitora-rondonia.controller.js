@@ -137,7 +137,7 @@ async function documentos(req, res, next) {
     const sql = `SELECT filial_destino, cidade_destinatario, documento,
                         emissao_ultimo_manifesto, eh_vaptlog,
                         data_entrega, eh_data_entrega_editada,
-                        vaptlog_entrega,
+                        vaptlog_entrega, observacao,
                         COUNT(*) OVER() AS total
                    FROM \`${VIEW_NAME}\`
                   ${whereSql}
@@ -163,6 +163,7 @@ async function documentos(req, res, next) {
         data_entrega: r.data_entrega?.value ?? r.data_entrega ?? null,
         eh_data_entrega_editada: r.eh_data_entrega_editada ?? null,
         vaptlog_entrega: r.vaptlog_entrega ?? null,
+        observacao: r.observacao ?? null,
       })),
       total,
       pagina: paginaNum,
@@ -193,7 +194,8 @@ async function salvarDataEntrega(req, res, next) {
     if (eh_data_entrega_editada === 'S') {
       sql = `UPDATE \`${TABLE_NAME}\`
                 SET dado = @dado
-              WHERE documento = @documento`;
+              WHERE documento = @documento
+                AND tipo_dado = @tipo_dado`;
     } else {
       sql = `INSERT INTO \`${TABLE_NAME}\` (documento, tipo_dado, dado)
              VALUES (@documento, @tipo_dado, @dado)`;
@@ -213,6 +215,81 @@ async function salvarDataEntrega(req, res, next) {
       },
       location: BQ_LOCATION,
     });
+
+    cacheDocumentos.clear();
+
+    res.json({ sucesso: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function salvarObservacao(req, res, next) {
+  try {
+    if (!bigquery) throw new ApiError(503, 'BigQuery nao configurado');
+
+    const { documento } = req.params;
+    const observacao =
+      typeof req.body.observacao === 'string' ? req.body.observacao.trim() : '';
+    const documentoNumerico = Number(documento);
+
+    if (!Number.isFinite(documentoNumerico)) {
+      throw new ApiError(400, 'Documento invalido');
+    }
+
+    if (observacao.length > 30) {
+      throw new ApiError(
+        400,
+        'Observacao deve ter no maximo 30 caracteres'
+      );
+    }
+
+    const params = {
+      documento: documentoNumerico,
+      tipo_dado: 'observacao',
+    };
+    const parameterTypes = {
+      documento: { typeKind: 'INT64' },
+      tipo_dado: { typeKind: 'STRING' },
+    };
+
+    if (!observacao) {
+      await bigquery.query({
+        query: `DELETE FROM \`${TABLE_NAME}\`
+                 WHERE documento = @documento
+                   AND tipo_dado = @tipo_dado`,
+        params,
+        parameterTypes,
+        location: BQ_LOCATION,
+      });
+    } else {
+      const [registros] = await bigquery.query({
+        query: `SELECT 1
+                  FROM \`${TABLE_NAME}\`
+                 WHERE documento = @documento
+                   AND tipo_dado = @tipo_dado
+                 LIMIT 1`,
+        params,
+        parameterTypes,
+        location: BQ_LOCATION,
+      });
+
+      const sql =
+        registros.length > 0
+          ? `UPDATE \`${TABLE_NAME}\`
+                SET dado = @dado
+              WHERE documento = @documento
+                AND tipo_dado = @tipo_dado`
+          : `INSERT INTO \`${TABLE_NAME}\` (documento, tipo_dado, dado)
+             VALUES (@documento, @tipo_dado, @dado)`;
+
+      await bigquery.query({
+        query: sql,
+        params: { ...params, dado: observacao },
+        parameterTypes: { ...parameterTypes, dado: { typeKind: 'STRING' } },
+        location: BQ_LOCATION,
+      });
+    }
 
     cacheDocumentos.clear();
 
@@ -261,4 +338,10 @@ async function toggleVaptlog(req, res, next) {
   }
 }
 
-module.exports = { filtros, documentos, salvarDataEntrega, toggleVaptlog };
+module.exports = {
+  filtros,
+  documentos,
+  salvarDataEntrega,
+  salvarObservacao,
+  toggleVaptlog,
+};

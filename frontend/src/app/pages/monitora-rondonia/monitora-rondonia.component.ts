@@ -21,11 +21,17 @@ import {
   MatDialogActions,
 } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Observable, forkJoin } from 'rxjs';
 import {
   MonitoraRondoniaService,
 } from '../../core/services/monitora-rondonia.service';
 import { DocumentoEmitido } from '../../core/models';
 import { PermissaoDirective } from '../../core/directives/permissao.directive';
+
+interface EdicaoDocumentoResultado {
+  data_entrega: string;
+  observacao: string;
+}
 
 @Component({
   selector: 'app-monitora-rondonia',
@@ -131,6 +137,14 @@ import { PermissaoDirective } from '../../core/directives/permissao.directive';
               </span>
             </td>
           </ng-container>
+          <ng-container matColumnDef="observacao">
+            <th mat-header-cell *matHeaderCellDef>Observação</th>
+            <td mat-cell *matCellDef="let d" class="obs-cell">
+              <span [matTooltip]="d.observacao || ''" [matTooltipShowDelay]="500">
+                {{ d.observacao }}
+              </span>
+            </td>
+          </ng-container>
           <ng-container matColumnDef="eh_vaptlog">
             <th mat-header-cell *matHeaderCellDef>É Vaptlog</th>
             <td mat-cell *matCellDef="let d">
@@ -140,7 +154,7 @@ import { PermissaoDirective } from '../../core/directives/permissao.directive';
           <ng-container matColumnDef="acoes">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let d">
-              <button mat-icon-button matTooltip="Editar data de entrega"
+              <button mat-icon-button matTooltip="Editar documento"
                       appPermissao="monitora-rondonia:editar"
                       (click)="abrirEdicao(d)">
                 <mat-icon>edit</mat-icon>
@@ -218,6 +232,11 @@ import { PermissaoDirective } from '../../core/directives/permissao.directive';
       font-size: 11px;
       font-weight: 500;
     }
+    .obs-cell {
+      max-width: 260px;
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+    }
     .dialog-form {
       display: flex;
       flex-direction: column;
@@ -250,6 +269,7 @@ export class MonitoraRondoniaComponent implements OnInit {
     'documento',
     'emissao_ultimo_manifesto',
     'data_entrega',
+    'observacao',
     'eh_vaptlog',
     'acoes',
   ];
@@ -294,16 +314,47 @@ export class MonitoraRondoniaComponent implements OnInit {
       data: { documento },
     });
 
-    dialogRef.afterClosed().subscribe((resultado: string | undefined) => {
-      if (!resultado) return;
-      this.service
-        .salvarDataEntrega(documento.documento!, {
-          data_entrega: resultado,
-          eh_data_entrega_editada: documento.eh_data_entrega_editada || 'N',
-        })
-        .subscribe({
+    dialogRef
+      .afterClosed()
+      .subscribe((resultado: EdicaoDocumentoResultado | undefined) => {
+        if (!resultado) return;
+
+        const dataOriginal = documento.data_entrega ?? '';
+        const observacaoOriginal = documento.observacao ?? '';
+        const dataAlterada = resultado.data_entrega !== dataOriginal;
+        const observacaoAlterada =
+          resultado.observacao !== observacaoOriginal;
+
+        const requisicoes: Observable<{ sucesso: boolean }>[] = [];
+
+        if (dataAlterada) {
+          requisicoes.push(
+            this.service.salvarDataEntrega(documento.documento!, {
+              data_entrega: resultado.data_entrega,
+              eh_data_entrega_editada:
+                documento.eh_data_entrega_editada || 'N',
+            })
+          );
+        }
+
+        if (observacaoAlterada) {
+          requisicoes.push(
+            this.service.salvarObservacao(documento.documento!, {
+              observacao: resultado.observacao,
+            })
+          );
+        }
+
+        if (requisicoes.length === 0) {
+          this.snackBar.open('Nenhuma alteração.', 'Fechar', {
+            duration: 3000,
+          });
+          return;
+        }
+
+        forkJoin(requisicoes).subscribe({
           next: () => {
-            this.snackBar.open('Data de entrega atualizada.', 'Fechar', {
+            this.snackBar.open('Dados atualizados.', 'Fechar', {
               duration: 3000,
             });
             this.carregar();
@@ -314,9 +365,10 @@ export class MonitoraRondoniaComponent implements OnInit {
               'Fechar',
               { duration: 5000 }
             );
+            this.carregar();
           },
         });
-    });
+      });
   }
 
   toggleVaptlog(documento: DocumentoEmitido, acao: 'adicionar' | 'remover'): void {
@@ -369,6 +421,7 @@ export class MonitoraRondoniaComponent implements OnInit {
 @Component({
   selector: 'app-monitora-rondonia-edit-dialog',
   imports: [
+    NgIf,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -376,7 +429,7 @@ export class MonitoraRondoniaComponent implements OnInit {
     MatButtonModule,
   ],
   template: `
-    <h2 mat-dialog-title>Editar Data de Entrega</h2>
+    <h2 mat-dialog-title>Editar documento</h2>
     <mat-dialog-content>
       <form [formGroup]="formulario" class="dialog-form">
         <mat-form-field appearance="outline" class="full-width">
@@ -398,6 +451,22 @@ export class MonitoraRondoniaComponent implements OnInit {
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Data entrega</mat-label>
           <input matInput type="date" formControlName="data_entrega" />
+          <mat-error *ngIf="formulario.get('data_entrega')!.invalid">
+            Informe uma data válida.
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Observação</mat-label>
+          <textarea
+            matInput
+            formControlName="observacao"
+            rows="3"
+            maxlength="30"
+          ></textarea>
+          <mat-hint align="end">Máximo de 30 caracteres</mat-hint>
+          <mat-error *ngIf="formulario.get('observacao')!.hasError('maxlength')">
+            Máximo de 30 caracteres.
+          </mat-error>
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>É Vaptlog</mat-label>
@@ -407,8 +476,7 @@ export class MonitoraRondoniaComponent implements OnInit {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" [disabled]="formulario.get('data_entrega')!.invalid"
-              (click)="salvar()">Salvar</button>
+      <button mat-flat-button color="primary" (click)="salvar()">Salvar</button>
     </mat-dialog-actions>
   `,
   styles: `
@@ -427,8 +495,9 @@ export class MonitoraRondoniaEditDialogComponent {
     cidade_destinatario: [''],
     documento: [''],
     emissao_ultimo_manifesto: [''],
-    data_entrega: ['', Validators.required],
+    data_entrega: ['', Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)],
     eh_vaptlog: [''],
+    observacao: [''],
   });
 
   constructor(
@@ -443,6 +512,7 @@ export class MonitoraRondoniaEditDialogComponent {
       emissao_ultimo_manifesto: d.emissao_ultimo_manifesto || '',
       data_entrega: d.data_entrega || '',
       eh_vaptlog: d.eh_vaptlog || '',
+      observacao: d.observacao || '',
     });
 
     this.formulario.get('filial_destino')!.disable();
@@ -454,6 +524,30 @@ export class MonitoraRondoniaEditDialogComponent {
 
   salvar(): void {
     const raw = this.formulario.getRawValue();
-    this.dialogRef.close(raw.data_entrega);
+    const dataAtual = raw.data_entrega || '';
+    const dataOriginal = this.data.documento.data_entrega || '';
+    const dataEntrega = this.formulario.get('data_entrega')!;
+
+    if (dataAtual && dataEntrega.invalid) {
+      dataEntrega.markAsTouched();
+      return;
+    }
+
+    if (dataOriginal && !dataAtual) {
+      dataEntrega.setErrors({ obrigatoria: true });
+      dataEntrega.markAsTouched();
+      return;
+    }
+
+    const observacao = this.formulario.get('observacao')!;
+    if (observacao.invalid) {
+      observacao.markAsTouched();
+      return;
+    }
+
+    this.dialogRef.close({
+      data_entrega: dataAtual,
+      observacao: raw.observacao ?? '',
+    });
   }
 }

@@ -6,6 +6,7 @@ import {
   MonitoraRondoniaFiltros,
   MonitoraRondoniaFiltrosMeta,
   SalvarDataEntregaPayload,
+  SalvarObservacaoPayload,
 } from '../models';
 
 export interface DocumentosResponse {
@@ -68,6 +69,16 @@ export class MonitoraRondoniaService {
   ): Observable<{ sucesso: boolean }> {
     return this.http.put<{ sucesso: boolean }>(
       `${this.baseUrl}/documentos/${encodeURIComponent(documento)}/data-entrega`,
+      payload
+    );
+  }
+
+  salvarObservacao(
+    documento: string,
+    payload: SalvarObservacaoPayload
+  ): Observable<{ sucesso: boolean }> {
+    return this.http.put<{ sucesso: boolean }>(
+      `${this.baseUrl}/documentos/${encodeURIComponent(documento)}/observacao`,
       payload
     );
   }
